@@ -13,6 +13,7 @@ import WorkOrderCalendar from './pages/WorkOrderCalendar';
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
 import Login from './pages/Login';
+import Users from './pages/Users';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 function RequireAuth({ children }) {
@@ -79,6 +80,7 @@ function App() {
                 <Route path="/work-orders/calendar" element={<WorkOrderCalendar />} />
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/users" element={<Users />} />
               </Routes>
             </AppLayout></RequireAuth>
           } />

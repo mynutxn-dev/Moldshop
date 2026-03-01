@@ -95,8 +95,8 @@ router.delete('/:id', auth, technicianUp, async (req, res) => {
   try {
     const mold = await Mold.findByPk(req.params.id);
     if (!mold) return res.status(404).json({ message: 'ไม่พบแม่พิมพ์' });
-    await mold.destroy();
-    res.json({ message: 'ลบแม่พิมพ์สำเร็จ' });
+    await mold.update({ status: 'retired' });
+    res.json({ message: 'ลบแม่พิมพ์ (ปลดระวาง) สำเร็จ' });
   } catch (error) {
     console.error('Delete mold error:', error);
     res.status(500).json({ message: 'เกิดข้อผิดพลาด' });

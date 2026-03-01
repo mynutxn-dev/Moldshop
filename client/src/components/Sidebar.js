@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiGrid, FiBox, FiTool, FiClipboard, FiBarChart2, FiX, FiPackage } from 'react-icons/fi';
+import { FiGrid, FiBox, FiTool, FiClipboard, FiBarChart2, FiX, FiPackage, FiUsers } from 'react-icons/fi';
 
 const menuItems = [
   { path: '/', label: 'Dashboard', icon: FiGrid },
@@ -9,6 +9,7 @@ const menuItems = [
   { path: '/work-orders', label: 'New Model', icon: FiClipboard },
   { path: '/inventory', label: 'จัดการสต๊อค', icon: FiPackage },
   { path: '/reports', label: 'รายงาน', icon: FiBarChart2 },
+  { path: '/users', label: 'ผู้ใช้งาน', icon: FiUsers, adminOnly: true },
 ];
 
 const Sidebar = ({ isOpen, onClose, onHoverChange }) => {
@@ -92,7 +93,7 @@ const Sidebar = ({ isOpen, onClose, onHoverChange }) => {
             เมนูหลัก
           </p>
           <ul className="space-y-1">
-            {menuItems.map((item) => {
+            {menuItems.filter(item => !item.adminOnly || user?.role === 'admin').map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
               return (
@@ -147,7 +148,7 @@ const Sidebar = ({ isOpen, onClose, onHoverChange }) => {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden safe-area-bottom">
         <div className="flex items-center justify-around">
-          {menuItems.map((item) => {
+          {menuItems.filter(item => !item.adminOnly || user?.role === 'admin').map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (

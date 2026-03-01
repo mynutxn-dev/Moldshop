@@ -152,8 +152,8 @@ router.delete('/:id', auth, technicianUp, async (req, res) => {
   try {
     const request = await MaintenanceRequest.findByPk(req.params.id);
     if (!request) return res.status(404).json({ message: 'ไม่พบรายการ' });
-    await request.destroy();
-    res.json({ message: 'ลบรายการสำเร็จ' });
+    await request.update({ status: 'cancelled' });
+    res.json({ message: 'ลบ (ยกเลิก) รายการสำเร็จ' });
   } catch (error) {
     res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
   }

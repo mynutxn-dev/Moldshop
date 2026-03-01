@@ -105,8 +105,8 @@ router.delete('/:id', auth, technicianUp, async (req, res) => {
   try {
     const wo = await WorkOrder.findByPk(req.params.id);
     if (!wo) return res.status(404).json({ message: 'ไม่พบใบสั่งงาน' });
-    await wo.destroy();
-    res.json({ message: 'ลบใบสั่งงานสำเร็จ' });
+    await wo.update({ status: 'cancelled' });
+    res.json({ message: 'ลบ (ยกเลิก) ใบสั่งงานสำเร็จ' });
   } catch (error) {
     res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
   }

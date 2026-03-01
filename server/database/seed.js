@@ -5,6 +5,12 @@ const seed = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected');
+
+    // Drop everything and recreate schema (clean slate for Supabase)
+    await sequelize.query('DROP SCHEMA public CASCADE;');
+    await sequelize.query('CREATE SCHEMA public;');
+    console.log('✅ Cleaned up old tables and ENUM types');
+
     await sequelize.sync({ force: true });
     console.log('✅ Tables created');
 
@@ -42,11 +48,11 @@ const seed = async () => {
 
     // Work Orders
     await WorkOrder.bulkCreate([
-      { orderCode: 'WO-2026-001', moldId: null, title: 'สร้างแม่พิมพ์ใหม่ Part A - Tail Lamp Housing', type: 'new_mold', description: 'สร้างแม่พิมพ์ Tail Lamp Housing สำหรับลูกค้า Toyota', priority: 'high', status: 'in_progress', progress: 35, assignedToId: tech1.id, createdById: manager.id, startDate: '2026-02-10', dueDate: '2026-03-15' },
+      { orderCode: 'WO-2026-001', moldId: null, title: 'สร้างแม่พิมพ์ใหม่ Part A - Tail Lamp Housing', type: 'new_mold', description: 'สร้างแม่พิมพ์ Tail Lamp Housing สำหรับลูกค้า Toyota', priority: 'high', status: 'machine_mold', progress: 35, assignedToId: tech1.id, createdById: manager.id, startDate: '2026-02-10', dueDate: '2026-03-15' },
       { orderCode: 'WO-2026-002', moldId: molds[1].id, title: 'แก้ไข Cavity Surface MOLD-002', type: 'modify', description: 'ขัดผิว Cavity ให้ได้ค่า Ra ตามสเปค', priority: 'normal', status: 'completed', progress: 100, assignedToId: tech2.id, createdById: manager.id, startDate: '2026-02-12', dueDate: '2026-02-18', completedDate: '2026-02-17' },
-      { orderCode: 'WO-2026-003', moldId: null, title: 'ทดสอบ Trial Run แม่พิมพ์ใหม่', type: 'trial', description: 'Trial Run แม่พิมพ์ที่สร้างใหม่จาก WO-2026-001', priority: 'normal', status: 'pending', progress: 0, createdById: manager.id, dueDate: '2026-03-20' },
-      { orderCode: 'WO-2026-004', moldId: molds[2].id, title: 'ปรับปรุง Cooling System MOLD-003', type: 'improvement', description: 'เพิ่ม Cooling Channel เพื่อลด Cycle Time', priority: 'high', status: 'in_progress', progress: 60, assignedToId: tech1.id, createdById: manager.id, startDate: '2026-02-17', dueDate: '2026-02-25' },
-      { orderCode: 'WO-2026-005', moldId: molds[4].id, title: 'ทำ Cavity ใหม่ทดแทน MOLD-005', type: 'repair', description: 'Cavity เดิมแตก ต้องผลิตใหม่', priority: 'urgent', status: 'pending', progress: 0, createdById: tech1.id, dueDate: '2026-03-01' },
+      { orderCode: 'WO-2026-003', moldId: null, title: 'ทดสอบ Trial Run แม่พิมพ์ใหม่', type: 'trial', description: 'Trial Run แม่พิมพ์ที่สร้างใหม่จาก WO-2026-001', priority: 'normal', status: 'mold_design', progress: 0, createdById: manager.id, dueDate: '2026-03-20' },
+      { orderCode: 'WO-2026-004', moldId: molds[2].id, title: 'ปรับปรุง Cooling System MOLD-003', type: 'improvement', description: 'เพิ่ม Cooling Channel เพื่อลด Cycle Time', priority: 'high', status: 'finishing_mold', progress: 60, assignedToId: tech1.id, createdById: manager.id, startDate: '2026-02-17', dueDate: '2026-02-25' },
+      { orderCode: 'WO-2026-005', moldId: molds[4].id, title: 'ทำ Cavity ใหม่ทดแทน MOLD-005', type: 'repair', description: 'Cavity เดิมแตก ต้องผลิตใหม่', priority: 'urgent', status: 'mold_design', progress: 0, createdById: tech1.id, dueDate: '2026-03-01' },
     ]);
     console.log('✅ Work orders seeded');
 

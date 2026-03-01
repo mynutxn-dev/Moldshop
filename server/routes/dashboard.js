@@ -16,8 +16,15 @@ router.get('/stats', auth, async (req, res) => {
     const pendingMaintenance = await MaintenanceRequest.count({ where: { status: 'pending' } });
     const inProgressMaintenance = await MaintenanceRequest.count({ where: { status: 'in_progress' } });
 
-    const pendingWorkOrders = await WorkOrder.count({ where: { status: 'pending' } });
-    const inProgressWorkOrders = await WorkOrder.count({ where: { status: 'in_progress' } });
+    // Pending WorkOrders (just starting)
+    const pendingWorkOrders = await WorkOrder.count({ where: { status: 'mold_design' } });
+
+    // In-progress WorkOrders (any other active state)
+    const inProgressWorkOrders = await WorkOrder.count({
+      where: {
+        status: ['aluminium_casting', 'machine_mold', 'finishing_mold', 'finishing_assembly', 'trial_mold']
+      }
+    });
 
     res.json({
       molds: { total: totalMolds, active: activeMolds, inUse: inUseMolds, maintenance: maintenanceMolds, damaged: damagedMolds },
@@ -26,7 +33,7 @@ router.get('/stats', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
-    res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    res.status(500).json({ message: 'เกิดข้อผิดพลาด', detail: error.message, stack: error.stack });
   }
 });
 
