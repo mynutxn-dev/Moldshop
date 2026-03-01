@@ -23,6 +23,7 @@ const Users = () => {
     // Modals state
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, user: null });
     const [editingId, setEditingId] = useState(null);
     const [saving, setSaving] = useState(false);
 
@@ -135,13 +136,19 @@ const Users = () => {
         }
     };
 
-    const handleToggleActive = async (user) => {
+    const confirmToggleActive = (user) => {
+        setConfirmModal({ isOpen: true, user });
+    };
+
+    const handleToggleActive = async () => {
+        const user = confirmModal.user;
+        if (!user) return;
+
         const action = user.isActive ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน';
-        if (!window.confirm(`ต้องการ${action}ผู้ใช้นี้?`)) return;
 
         try {
             if (user.isActive) {
-                await usersAPI.delete(user.id); // Our backend set isActive to false
+                await usersAPI.delete(user.id);
             } else {
                 await usersAPI.update(user.id, { isActive: true });
             }
@@ -149,6 +156,8 @@ const Users = () => {
             fetchUsers();
         } catch (err) {
             toast.error(`${action}ไม่สำเร็จ`);
+        } finally {
+            setConfirmModal({ isOpen: false, user: null });
         }
     };
 
@@ -230,7 +239,7 @@ const Users = () => {
                                                 <button onClick={() => openEditModal(u)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="แก้ไข">
                                                     <FiEdit2 className="h-4 w-4" />
                                                 </button>
-                                                <button onClick={() => handleToggleActive(u)} className={`p-1.5 rounded ${u.isActive ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`} title={u.isActive ? 'ระงับการใช้งาน' : 'เปิดการใช้งาน'}>
+                                                <button onClick={() => confirmToggleActive(u)} className={`p-1.5 rounded ${u.isActive ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`} title={u.isActive ? 'ระงับการใช้งาน' : 'เปิดการใช้งาน'}>
                                                     {u.isActive ? <FiUserX className="h-4 w-4" /> : <FiUserCheck className="h-4 w-4" />}
                                                 </button>
                                             </div>
@@ -360,6 +369,19 @@ const Users = () => {
                         <button type="submit" disabled={saving} className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">{saving ? 'กำลังอัปเดต...' : 'บันทึกการแก้ไข'}</button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Confirm Modal */}
+            <Modal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ isOpen: false, user: null })} title="ยืนยันการทำรายการ" size="sm">
+                <div className="space-y-4">
+                    <p className="text-gray-700">
+                        คุณต้องการ{confirmModal.user?.isActive ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}ผู้ใช้ <strong>{confirmModal.user?.firstName} {confirmModal.user?.lastName}</strong> ใช่หรือไม่?
+                    </p>
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <button type="button" onClick={() => setConfirmModal({ isOpen: false, user: null })} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+                        <button type="button" onClick={handleToggleActive} className={`px-6 py-2 text-sm font-medium text-white rounded-lg ${confirmModal.user?.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>ยืนยัน</button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
