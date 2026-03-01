@@ -4,7 +4,7 @@ import { usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { SkeletonTable } from '../components/Skeleton';
-import { useAuth } from '../contexts/AuthContext'; // Let's check if this exists or we use localStorage
+// removed unused auth context import
 import { useNavigate } from 'react-router-dom';
 
 const roleMap = {
