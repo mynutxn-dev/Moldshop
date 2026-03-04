@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPackage, FiSearch, FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiShoppingCart, FiList } from 'react-icons/fi';
+import { FiPackage, FiSearch, FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiShoppingCart, FiList, FiPlusCircle, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { SkeletonTable } from '../components/Skeleton';
@@ -39,6 +39,8 @@ const Inventory = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showStockInModal, setShowStockInModal] = useState(false);
+  const [stockInItem, setStockInItem] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [withdrawItem, setWithdrawItem] = useState(null);
@@ -49,6 +51,8 @@ const Inventory = () => {
   const [form, setForm] = useState(emptyForm);
 
   const emptyWithdrawForm = { quantity: 1, withdrawBy: '', purpose: '', moldCode: '' };
+  const emptyStockInForm = { quantity: 1, receivedBy: '', supplier: '', notes: '' };
+  const [stockInForm, setStockInForm] = useState(emptyStockInForm);
   const [withdrawForm, setWithdrawForm] = useState(emptyWithdrawForm);
 
   // โหลดจาก localStorage
@@ -95,6 +99,41 @@ const Inventory = () => {
     setWithdrawItem(item);
     setWithdrawForm({ ...emptyWithdrawForm, quantity: 1 });
     setShowWithdrawModal(true);
+  };
+
+  const openStockInModal = (item) => {
+    setStockInItem(item);
+    setStockInForm({ ...emptyStockInForm });
+    setShowStockInModal(true);
+  };
+
+  const handleStockIn = (e) => {
+    e.preventDefault();
+    if (!stockInItem) return;
+    const qty = parseInt(stockInForm.quantity) || 0;
+    if (qty <= 0) { toast.error('กรุณาระบุจำนวนที่ต้องการรับเข้า'); return; }
+    if (!stockInForm.receivedBy.trim()) { toast.error('กรุณาระบุชื่อผู้รับของ'); return; }
+    setItems(prev => prev.map(i =>
+      i.id === stockInItem.id ? { ...i, quantity: i.quantity + qty } : i
+    ));
+    const record = {
+      id: `si-${Date.now()}`,
+      type: 'in',
+      itemId: stockInItem.id,
+      itemCode: stockInItem.itemCode,
+      itemName: stockInItem.itemName,
+      unit: stockInItem.unit,
+      quantity: qty,
+      withdrawBy: stockInForm.receivedBy.trim(),
+      purpose: stockInForm.notes.trim() || `รับจาก ${stockInForm.supplier || 'ไม่ระบุ'}`,
+      moldCode: stockInForm.supplier.trim(),
+      date: new Date().toISOString(),
+    };
+    setHistory(prev => [record, ...prev]);
+    toast.success(`รับเข้า ${stockInItem.itemName} จำนวน ${qty} ${stockInItem.unit} สำเร็จ`);
+    setShowStockInModal(false);
+    setStockInItem(null);
+    setStockInForm(emptyStockInForm);
   };
 
   const handleSubmit = (e) => {
@@ -319,10 +358,17 @@ const Inventory = () => {
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end space-x-1">
                               <button
+                                onClick={() => openStockInModal(item)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                                title="รับเข้าสต๊อค"
+                              >
+                                <FiPlusCircle className="h-4 w-4" />
+                              </button>
+                              <button
                                 onClick={() => openWithdrawModal(item)}
                                 disabled={item.quantity <= 0}
                                 className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                                title="เบิกของ"
+                                title="เบิกออก"
                               >
                                 <FiShoppingCart className="h-4 w-4" />
                               </button>
@@ -380,9 +426,15 @@ const Inventory = () => {
                     <td className="px-4 py-3 font-medium text-blue-600">{record.itemCode}</td>
                     <td className="px-4 py-3 text-gray-900">{record.itemName}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
-                        -{record.quantity} {record.unit}
-                      </span>
+                      {record.type === 'in' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600">
+                          <FiArrowUp className="h-3 w-3" />+{record.quantity} {record.unit}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
+                          <FiArrowDown className="h-3 w-3" />-{record.quantity} {record.unit}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.withdrawBy}</td>
                     <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.purpose || '-'}</td>
@@ -463,6 +515,74 @@ const Inventory = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* ===== Stock-In Modal ===== */}
+      <Modal isOpen={showStockInModal} onClose={() => setShowStockInModal(false)} title="รับของเข้าสต๊อค" size="md">
+        {stockInItem && (
+          <form onSubmit={handleStockIn} className="space-y-4">
+            <div className="bg-green-50 rounded-xl p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 gradient-green rounded-xl flex items-center justify-center flex-shrink-0">
+                  <FiPackage className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{stockInItem.itemName}</p>
+                  <p className="text-sm text-gray-500">{stockInItem.itemCode} · คงเหลือปัจจุบัน <span className="font-bold text-green-600">{stockInItem.quantity} {stockInItem.unit}</span></p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนที่รับเข้า *</label>
+                <input
+                  type="number"
+                  value={stockInForm.quantity}
+                  onChange={(e) => setStockInForm({ ...stockInForm, quantity: parseInt(e.target.value) || 0 })}
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">หลังรับ: <span className="font-bold text-green-600">{stockInItem.quantity + (parseInt(stockInForm.quantity) || 0)} {stockInItem.unit}</span></p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ผู้รับของ *</label>
+                <input
+                  type="text"
+                  value={stockInForm.receivedBy}
+                  onChange={(e) => setStockInForm({ ...stockInForm, receivedBy: e.target.value })}
+                  placeholder={user.firstName || 'ชื่อผู้รับของ'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">แหล่งที่มา / Supplier</label>
+                <input
+                  type="text"
+                  value={stockInForm.supplier}
+                  onChange={(e) => setStockInForm({ ...stockInForm, supplier: e.target.value })}
+                  placeholder="เช่น บริษัท ABC, ซื้อสด"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                <input
+                  type="text"
+                  value={stockInForm.notes}
+                  onChange={(e) => setStockInForm({ ...stockInForm, notes: e.target.value })}
+                  placeholder="เช่น ซื้อเพิ่ม, รับคืนจากงาน"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">
+              <button type="button" onClick={() => setShowStockInModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+              <button type="submit" className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
+                ยืนยันรับเข้า
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* ===== Withdraw Modal ===== */}
