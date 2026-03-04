@@ -55,7 +55,11 @@ try {
     const ensureDB = async () => {
         if (!isConnected) {
             await testConnection();
-            await sequelize.sync({ alter: true });
+            try {
+                await sequelize.sync({ alter: true });
+            } catch (syncErr) {
+                console.warn('DB sync warning (non-fatal):', syncErr.message);
+            }
             isConnected = true;
         }
     };
