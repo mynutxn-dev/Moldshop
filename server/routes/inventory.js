@@ -1,6 +1,6 @@
 const express = require('express');
 const { Inventory, InventoryHistory } = require('../models');
-const { auth, technicianUp } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const router = express.Router();
 
@@ -26,7 +26,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST /api/inventory - เพิ่มรายการใหม่
-router.post('/', auth, technicianUp, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const item = await Inventory.create(req.body);
     res.status(201).json(item);
@@ -40,7 +40,7 @@ router.post('/', auth, technicianUp, async (req, res) => {
 });
 
 // PUT /api/inventory/:id - แก้ไขรายการ
-router.put('/:id', auth, technicianUp, async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   try {
     const item = await Inventory.findByPk(req.params.id);
     if (!item) return res.status(404).json({ message: 'ไม่พบรายการ' });
@@ -53,7 +53,7 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
 });
 
 // DELETE /api/inventory/:id - ลบรายการ
-router.delete('/:id', auth, technicianUp, async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const item = await Inventory.findByPk(req.params.id);
     if (!item) return res.status(404).json({ message: 'ไม่พบรายการ' });
