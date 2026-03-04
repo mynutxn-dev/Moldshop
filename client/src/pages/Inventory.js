@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FiPackage, FiSearch, FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiShoppingCart, FiList, FiPlusCircle, FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiPackage, FiSearch, FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiShoppingCart, FiList, FiPlusCircle, FiArrowUp, FiArrowDown, FiRefreshCw } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { SkeletonTable } from '../components/Skeleton';
+import { inventoryAPI } from '../services/api';
 
 const statusMap = {
   available: { label: 'พร้อมใช้', color: 'text-green-600 bg-green-50' },
@@ -10,24 +11,6 @@ const statusMap = {
   out_of_stock: { label: 'หมดสต๊อค', color: 'text-red-600 bg-red-50' },
 };
 
-const STORAGE_KEY = 'moldshop_inventory';
-const HISTORY_KEY = 'moldshop_inventory_history';
-
-// ข้อมูลตัวอย่างเริ่มต้น
-const defaultItems = [
-  { id: 'inv-1', itemCode: 'BLT-001', itemName: 'สกรูหัวจม M8x30', category: 'น๊อต/สกรู', location: 'ชั้น A-01', quantity: 150, minStock: 50, unit: 'ตัว', notes: 'ใช้กับงาน Mold ทั่วไป' },
-  { id: 'inv-2', itemCode: 'BLT-002', itemName: 'สกรูหัวจม M10x40', category: 'น๊อต/สกรู', location: 'ชั้น A-01', quantity: 80, minStock: 30, unit: 'ตัว', notes: '' },
-  { id: 'inv-3', itemCode: 'BLT-003', itemName: 'น๊อตหกเหลี่ยม M12', category: 'น๊อต/สกรู', location: 'ชั้น A-02', quantity: 100, minStock: 40, unit: 'ตัว', notes: '' },
-  { id: 'inv-4', itemCode: 'EMI-001', itemName: 'ดอกเอ็นมิล Ø10 Carbide', category: 'เครื่องมือตัด', location: 'ตู้เครื่องมือ B', quantity: 5, minStock: 3, unit: 'ชิ้น', notes: '4 ฟัน, ความยาว 75mm' },
-  { id: 'inv-5', itemCode: 'EMI-002', itemName: 'ดอกเอ็นมิล Ø16 Carbide', category: 'เครื่องมือตัด', location: 'ตู้เครื่องมือ B', quantity: 3, minStock: 2, unit: 'ชิ้น', notes: '4 ฟัน' },
-  { id: 'inv-6', itemCode: 'DRL-001', itemName: 'ดอกสว่าน Ø8.5 HSS', category: 'เครื่องมือตัด', location: 'ตู้เครื่องมือ B', quantity: 10, minStock: 5, unit: 'ชิ้น', notes: '' },
-  { id: 'inv-7', itemCode: 'INS-001', itemName: 'เม็ดมีด CNMG 120408', category: 'เม็ดมีด/Insert', location: 'ตู้เครื่องมือ C', quantity: 20, minStock: 10, unit: 'เม็ด', notes: 'สำหรับงานกลึง' },
-  { id: 'inv-8', itemCode: 'PIN-001', itemName: 'Ejector Pin Ø6x200', category: 'อะไหล่ Mold', location: 'ชั้น D-01', quantity: 25, minStock: 10, unit: 'ชิ้น', notes: '' },
-  { id: 'inv-9', itemCode: 'PIN-002', itemName: 'Ejector Pin Ø8x250', category: 'อะไหล่ Mold', location: 'ชั้น D-01', quantity: 15, minStock: 8, unit: 'ชิ้น', notes: '' },
-  { id: 'inv-10', itemCode: 'SPR-001', itemName: 'สปริงแม่พิมพ์ TF25x50', category: 'อะไหล่ Mold', location: 'ชั้น D-02', quantity: 30, minStock: 10, unit: 'ชิ้น', notes: 'สีเขียว (Medium)' },
-  { id: 'inv-11', itemCode: 'GRS-001', itemName: 'จารบีหล่อลื่น Mold', category: 'วัสดุสิ้นเปลือง', location: 'ชั้น E-01', quantity: 8, minStock: 3, unit: 'กระป๋อง', notes: '' },
-  { id: 'inv-12', itemCode: 'POL-001', itemName: 'กระดาษทราย #400', category: 'วัสดุสิ้นเปลือง', location: 'ชั้น E-02', quantity: 50, minStock: 20, unit: 'แผ่น', notes: 'สำหรับขัด Mold' },
-];
 
 const categories = ['น๊อต/สกรู', 'เครื่องมือตัด', 'เม็ดมีด/Insert', 'อะไหล่ Mold', 'วัสดุสิ้นเปลือง', 'อุปกรณ์วัด', 'อื่นๆ'];
 
@@ -35,54 +18,58 @@ const Inventory = () => {
   const [items, setItems] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showStockInModal, setShowStockInModal] = useState(false);
   const [stockInItem, setStockInItem] = useState(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [withdrawItem, setWithdrawItem] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'history'
+  const [activeTab, setActiveTab] = useState('stock');
 
   const emptyForm = { itemCode: '', itemName: '', category: '', location: '', quantity: 0, minStock: 0, unit: 'ชิ้น', notes: '' };
   const [form, setForm] = useState(emptyForm);
 
   const emptyWithdrawForm = { quantity: 1, withdrawBy: '', purpose: '', moldCode: '' };
   const emptyStockInForm = { quantity: 1, receivedBy: '', supplier: '', notes: '' };
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [stockInForm, setStockInForm] = useState(emptyStockInForm);
   const [withdrawForm, setWithdrawForm] = useState(emptyWithdrawForm);
 
-  // โหลดจาก localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const savedHistory = localStorage.getItem(HISTORY_KEY);
-    if (saved) {
-      setItems(JSON.parse(saved));
-    } else {
-      setItems(defaultItems);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultItems));
+  const fetchItems = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await inventoryAPI.getAll();
+      setItems(res.data);
+    } catch (error) {
+      toast.error('โหลดข้อมูลสต๊อคไม่สำเร็จ');
+    } finally {
+      setLoading(false);
     }
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
-    setLoading(false);
   }, []);
 
-  // บันทึกลง localStorage
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await inventoryAPI.getHistory();
+      setHistory(res.data);
+    } catch (error) {
+      toast.error('โหลดประวัติไม่สำเร็จ');
+    } finally {
+      setHistoryLoading(false);
     }
-  }, [items, loading]);
+  }, []);
 
   useEffect(() => {
-    if (!loading) {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    }
-  }, [history, loading]);
+    fetchItems();
+  }, [fetchItems]);
+
+  useEffect(() => {
+    if (activeTab === 'history') fetchHistory();
+  }, [activeTab, fetchHistory]);
 
   const openModal = (item = null) => {
     if (item) {
@@ -107,92 +94,87 @@ const Inventory = () => {
     setShowStockInModal(true);
   };
 
-  const handleStockIn = (e) => {
+  const handleStockIn = async (e) => {
     e.preventDefault();
     if (!stockInItem) return;
     const qty = parseInt(stockInForm.quantity) || 0;
     if (qty <= 0) { toast.error('กรุณาระบุจำนวนที่ต้องการรับเข้า'); return; }
     if (!stockInForm.receivedBy.trim()) { toast.error('กรุณาระบุชื่อผู้รับของ'); return; }
-    setItems(prev => prev.map(i =>
-      i.id === stockInItem.id ? { ...i, quantity: i.quantity + qty } : i
-    ));
-    const record = {
-      id: `si-${Date.now()}`,
-      type: 'in',
-      itemId: stockInItem.id,
-      itemCode: stockInItem.itemCode,
-      itemName: stockInItem.itemName,
-      unit: stockInItem.unit,
-      quantity: qty,
-      withdrawBy: stockInForm.receivedBy.trim(),
-      purpose: stockInForm.notes.trim() || `รับจาก ${stockInForm.supplier || 'ไม่ระบุ'}`,
-      moldCode: stockInForm.supplier.trim(),
-      date: new Date().toISOString(),
-    };
-    setHistory(prev => [record, ...prev]);
-    toast.success(`รับเข้า ${stockInItem.itemName} จำนวน ${qty} ${stockInItem.unit} สำเร็จ`);
-    setShowStockInModal(false);
-    setStockInItem(null);
-    setStockInForm(emptyStockInForm);
+    try {
+      await inventoryAPI.stockIn(stockInItem.id, {
+        quantity: qty,
+        performedBy: stockInForm.receivedBy.trim(),
+        source: stockInForm.supplier.trim(),
+        notes: stockInForm.notes.trim(),
+      });
+      toast.success(`รับเข้า ${stockInItem.itemName} จำนวน ${qty} ${stockInItem.unit} สำเร็จ`);
+      setShowStockInModal(false);
+      setStockInItem(null);
+      setStockInForm(emptyStockInForm);
+      fetchItems();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'รับเข้าสต๊อคไม่สำเร็จ');
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.itemCode || !form.itemName) {
       toast.error('กรุณากรอกรหัสและชื่อรายการ');
       return;
     }
-    if (editingItem) {
-      setItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...form } : i));
-      toast.success('อัปเดตรายการสำเร็จ');
-    } else {
-      const newItem = { ...form, id: `inv-${Date.now()}`, quantity: parseInt(form.quantity) || 0, minStock: parseInt(form.minStock) || 0 };
-      setItems(prev => [newItem, ...prev]);
-      toast.success('เพิ่มรายการสำเร็จ');
+    setSaving(true);
+    try {
+      if (editingItem) {
+        await inventoryAPI.update(editingItem.id, form);
+        toast.success('อัปเดตรายการสำเร็จ');
+      } else {
+        await inventoryAPI.create(form);
+        toast.success('เพิ่มรายการสำเร็จ');
+      }
+      setShowModal(false);
+      setForm(emptyForm);
+      setEditingItem(null);
+      fetchItems();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'บันทึกไม่สำเร็จ');
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
-    setForm(emptyForm);
-    setEditingItem(null);
   };
 
-  const handleWithdraw = (e) => {
+  const handleWithdraw = async (e) => {
     e.preventDefault();
     if (!withdrawItem) return;
     const qty = parseInt(withdrawForm.quantity) || 0;
     if (qty <= 0) { toast.error('กรุณาระบุจำนวนที่ต้องการเบิก'); return; }
-    if (qty > withdrawItem.quantity) { toast.error(`ของในสต๊อคมีเพียง ${withdrawItem.quantity} ${withdrawItem.unit}`); return; }
     if (!withdrawForm.withdrawBy.trim()) { toast.error('กรุณาระบุชื่อผู้เบิก'); return; }
-
-    // ตัดยอด
-    setItems(prev => prev.map(i =>
-      i.id === withdrawItem.id ? { ...i, quantity: i.quantity - qty } : i
-    ));
-
-    // บันทึกประวัติ
-    const record = {
-      id: `wh-${Date.now()}`,
-      itemId: withdrawItem.id,
-      itemCode: withdrawItem.itemCode,
-      itemName: withdrawItem.itemName,
-      unit: withdrawItem.unit,
-      quantity: qty,
-      withdrawBy: withdrawForm.withdrawBy.trim(),
-      purpose: withdrawForm.purpose.trim(),
-      moldCode: withdrawForm.moldCode.trim(),
-      date: new Date().toISOString(),
-    };
-    setHistory(prev => [record, ...prev]);
-
-    toast.success(`เบิก ${withdrawItem.itemName} จำนวน ${qty} ${withdrawItem.unit} สำเร็จ`);
-    setShowWithdrawModal(false);
-    setWithdrawItem(null);
-    setWithdrawForm(emptyWithdrawForm);
+    try {
+      await inventoryAPI.stockOut(withdrawItem.id, {
+        quantity: qty,
+        performedBy: withdrawForm.withdrawBy.trim(),
+        source: withdrawForm.moldCode.trim(),
+        notes: withdrawForm.purpose.trim(),
+      });
+      toast.success(`เบิก ${withdrawItem.itemName} จำนวน ${qty} ${withdrawItem.unit} สำเร็จ`);
+      setShowWithdrawModal(false);
+      setWithdrawItem(null);
+      setWithdrawForm(emptyWithdrawForm);
+      fetchItems();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'เบิกของไม่สำเร็จ');
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm('แน่ใจจะลบรายการนี้?')) return;
-    setItems(prev => prev.filter(i => i.id !== id));
-    toast.success('ลบรายการสำเร็จ');
+    try {
+      await inventoryAPI.delete(id);
+      toast.success('ลบรายการสำเร็จ');
+      fetchItems();
+    } catch (error) {
+      toast.error('ลบรายการไม่สำเร็จ');
+    }
   };
 
   const filtered = items.filter(item => {
@@ -209,8 +191,6 @@ const Inventory = () => {
 
   const lowStock = filtered.filter(i => i.quantity <= i.minStock);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   return (
     <div>
       {/* Header */}
@@ -220,6 +200,9 @@ const Inventory = () => {
           <p className="text-gray-500 mt-1 text-sm">อุปกรณ์ เครื่องมือ และวัสดุสำหรับงาน Moldshop</p>
         </div>
         <div className="mt-3 sm:mt-0 flex items-center gap-2">
+          <button onClick={fetchItems} className="inline-flex items-center px-3 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors mr-2">
+            <FiRefreshCw className="h-4 w-4" />
+          </button>
           <button onClick={() => openModal()} className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors btn-press">
             <FiPlus className="mr-2 h-4 w-4" /> เพิ่มรายการ
           </button>
@@ -239,7 +222,7 @@ const Inventory = () => {
           className={`flex-1 flex items-center justify-center py-2 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           <FiList className="mr-1.5 h-4 w-4" /> ประวัติเบิก
-          {history.length > 0 && <span className="ml-1.5 bg-blue-100 text-blue-600 text-xs font-bold px-1.5 py-0.5 rounded-full">{history.length}</span>}
+          {history.length > 0 && <span className="ml-1.5 bg-blue-100 text-blue-600 text-xs font-bold px-1.5 py-0.5 rounded-full">{history.length > 99 ? '99+' : history.length}</span>}
         </button>
       </div>
 
@@ -314,7 +297,13 @@ const Inventory = () => {
           </div>
 
           {/* Table */}
-          {loading ? <SkeletonTable rows={8} cols={7} /> : (
+          {loading ? <SkeletonTable rows={8} cols={7} /> : items.length === 0 && !search && !categoryFilter ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-400">
+              <FiPackage className="h-12 w-12 mx-auto mb-3" />
+              <p className="font-medium">ยังไม่มีรายการสต๊อค</p>
+              <p className="text-sm mt-1">กดปุ่ม "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+            </div>
+          ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -419,35 +408,36 @@ const Inventory = () => {
                 {history.map((record) => (
                   <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                      {new Date(record.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      {new Date(record.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' })}
                       <br />
-                      {new Date(record.date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(record.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td className="px-4 py-3 font-medium text-blue-600">{record.itemCode}</td>
-                    <td className="px-4 py-3 text-gray-900">{record.itemName}</td>
+                    <td className="px-4 py-3 font-medium text-blue-600">{record.item?.itemCode}</td>
+                    <td className="px-4 py-3 text-gray-900">{record.item?.itemName}</td>
                     <td className="px-4 py-3 text-center">
                       {record.type === 'in' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600">
-                          <FiArrowUp className="h-3 w-3" />+{record.quantity} {record.unit}
+                          <FiArrowUp className="h-3 w-3" />+{record.quantity} {record.item?.unit}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
-                          <FiArrowDown className="h-3 w-3" />-{record.quantity} {record.unit}
+                          <FiArrowDown className="h-3 w-3" />-{record.quantity} {record.item?.unit}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.withdrawBy}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.purpose || '-'}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{record.moldCode || '-'}</td>
+                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.performedBy}</td>
+                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.notes || '-'}</td>
+                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{record.source || '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {history.length === 0 && (
+          {historyLoading && <div className="p-8 text-center text-gray-400"><FiRefreshCw className="animate-spin h-6 w-6 mx-auto" /></div>}
+          {!historyLoading && history.length === 0 && (
             <div className="p-12 text-center text-gray-400">
               <FiList className="h-12 w-12 mx-auto mb-3" />
-              <p>ยังไม่มีประวัติการเบิกของ</p>
+              <p>ยังไม่มีประวัติการเบิก/รับของ</p>
             </div>
           )}
           {history.length > 0 && (

@@ -4,6 +4,8 @@ const Mold = require('./Mold');
 const MaintenanceRequest = require('./MaintenanceRequest');
 const WorkOrder = require('./WorkOrder');
 const MoldHistory = require('./MoldHistory');
+const Inventory = require('./Inventory');
+const InventoryHistory = require('./InventoryHistory');
 
 // Mold -> MaintenanceRequest
 Mold.hasMany(MaintenanceRequest, { foreignKey: 'mold_id', as: 'maintenanceRequests' });
@@ -37,6 +39,10 @@ WorkOrder.belongsTo(User, { foreignKey: 'created_by_id', as: 'createdBy' });
 User.hasMany(MoldHistory, { foreignKey: 'performed_by_id', as: 'moldActions' });
 MoldHistory.belongsTo(User, { foreignKey: 'performed_by_id', as: 'performedBy' });
 
+// Inventory -> InventoryHistory
+Inventory.hasMany(InventoryHistory, { foreignKey: 'inventory_id', as: 'history' });
+InventoryHistory.belongsTo(Inventory, { foreignKey: 'inventory_id', as: 'item' });
+
 module.exports = {
   sequelize,
   User,
@@ -44,4 +50,6 @@ module.exports = {
   MaintenanceRequest,
   WorkOrder,
   MoldHistory,
+  Inventory,
+  InventoryHistory,
 };

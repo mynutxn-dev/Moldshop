@@ -86,14 +86,15 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}`),
 };
 
-// Inventory (จำลองใช้ moldsAPI สำหรับตอนนี้)
+// Inventory
 export const inventoryAPI = {
-  getAll: (params) => moldsAPI.getAll(params),
+  getAll: (params) => api.get('/inventory', { params }),
   create: (data) => api.post('/inventory', data),
   update: (id, data) => api.put(`/inventory/${id}`, data),
   delete: (id) => api.delete(`/inventory/${id}`),
-  stockIn: (id) => api.put(`/inventory/${id}/stock-in`),
-  stockOut: (id) => api.put(`/inventory/${id}/stock-out`),
+  stockIn: (id, data) => api.post(`/inventory/${id}/stock-in`, data),
+  stockOut: (id, data) => api.post(`/inventory/${id}/stock-out`, data),
+  getHistory: () => api.get('/inventory/history'),
 };
 
 export default api;

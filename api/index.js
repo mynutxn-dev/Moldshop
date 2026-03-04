@@ -17,6 +17,7 @@ try {
     const workOrderRoutes = require('../server/routes/workOrders');
     const userRoutes = require('../server/routes/users');
     const dashboardRoutes = require('../server/routes/dashboard');
+    const inventoryRoutes = require('../server/routes/inventory');
 
     app = express();
 
@@ -36,6 +37,7 @@ try {
     app.use('/api/work-orders', workOrderRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/dashboard', dashboardRoutes);
+    app.use('/api/inventory', inventoryRoutes);
 
     // Health check
     app.get('/api/health', (req, res) => {
