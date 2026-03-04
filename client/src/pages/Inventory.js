@@ -473,11 +473,11 @@ const Inventory = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนคงเหลือ</label>
-              <input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 0 })} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value === '' ? '' : parseInt(e.target.value) })} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนขั้นต่ำ</label>
-              <input type="number" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: parseInt(e.target.value) || 0 })} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="number" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: e.target.value === '' ? '' : parseInt(e.target.value) })} min="0" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">หน่วย</label>
@@ -528,7 +528,7 @@ const Inventory = () => {
                 <input
                   type="number"
                   value={stockInForm.quantity}
-                  onChange={(e) => setStockInForm({ ...stockInForm, quantity: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setStockInForm({ ...stockInForm, quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
                   min="1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
@@ -598,7 +598,7 @@ const Inventory = () => {
                 <input
                   type="number"
                   value={withdrawForm.quantity}
-                  onChange={(e) => setWithdrawForm({ ...withdrawForm, quantity: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setWithdrawForm({ ...withdrawForm, quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
                   min="1"
                   max={withdrawItem.quantity}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
