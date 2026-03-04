@@ -31,29 +31,28 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentMT, setRecentMT] = useState([]);
   const [recentWO, setRecentWO] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingMT, setLoadingMT] = useState(true);
+  const [loadingWO, setLoadingWO] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsRes, mtRes, woRes] = await Promise.all([
-          dashboardAPI.getStats(),
-          dashboardAPI.getRecentMaintenance(),
-          dashboardAPI.getRecentWorkOrders(),
-        ]);
-        setStats(statsRes.data);
-        setRecentMT(mtRes.data);
-        setRecentWO(woRes.data);
-      } catch (err) {
-        console.error('Dashboard fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    dashboardAPI.getStats()
+      .then(res => setStats(res.data))
+      .catch(err => console.error('Stats error:', err))
+      .finally(() => setLoadingStats(false));
+
+    dashboardAPI.getRecentMaintenance()
+      .then(res => setRecentMT(res.data))
+      .catch(err => console.error('MT error:', err))
+      .finally(() => setLoadingMT(false));
+
+    dashboardAPI.getRecentWorkOrders()
+      .then(res => setRecentWO(res.data))
+      .catch(err => console.error('WO error:', err))
+      .finally(() => setLoadingWO(false));
   }, []);
 
-  if (loading) return <SkeletonDashboard />;
+  if (loadingStats && loadingMT && loadingWO) return <SkeletonDashboard />;
 
   const m = stats?.molds || {};
   const mt = stats?.maintenance || {};
@@ -85,19 +84,23 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {recentMT.map((item) => {
+            {loadingMT ? <div className="p-4 text-sm text-gray-400">กำลังดึงข้อมูล...</div> : recentMT.map((item) => {
               const s = statusMap[item.status] || statusMap.pending;
               return (
                 <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
                   <div>
                     <p className="font-medium text-gray-900 text-sm">{item.mold?.moldCode || item.requestCode}</p>
                     <p className="text-xs text-gray-500">{item.description}</p>
+                    <div className="flex flex-wrap gap-x-2 mt-1 text-[10px] text-gray-400">
+                      <span>แจ้ง: {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : new Date(item.createdAt).toLocaleDateString('th-TH')}</span>
+                      <span>ผลิต: {item.productionDate ? new Date(item.productionDate).toLocaleDateString('th-TH') : '-'}</span>
+                    </div>
                   </div>
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.color}`}>{s.label}</span>
                 </div>
               );
             })}
-            {recentMT.length === 0 && <p className="p-4 text-sm text-gray-400">ไม่มีรายการ</p>}
+            {!loadingMT && recentMT.length === 0 && <p className="p-4 text-sm text-gray-400">ไม่มีรายการ</p>}
           </div>
         </div>
 
@@ -110,7 +113,7 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="divide-y divide-gray-100">
-            {recentWO.map((item) => {
+            {loadingWO ? <div className="p-4 text-sm text-gray-400">กำลังดึงข้อมูล...</div> : recentWO.map((item) => {
               const s = statusMap[item.status] || statusMap.pending;
               return (
                 <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
@@ -122,7 +125,7 @@ const Dashboard = () => {
                 </div>
               );
             })}
-            {recentWO.length === 0 && <p className="p-4 text-sm text-gray-400">ไม่มีรายการ</p>}
+            {!loadingWO && recentWO.length === 0 && <p className="p-4 text-sm text-gray-400">ไม่มีรายการ</p>}
           </div>
         </div>
       </div>

@@ -54,6 +54,16 @@ const MaintenanceRequest = sequelize.define('MaintenanceRequest', {
     allowNull: true,
     field: 'completed_date',
   },
+  productionDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'production_date',
+  },
+  reportDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'report_date',
+  },
   cost: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,

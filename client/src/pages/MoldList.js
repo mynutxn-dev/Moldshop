@@ -5,6 +5,7 @@ import { moldsAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { SkeletonTable } from '../components/Skeleton';
+import CreatableSelect from 'react-select/creatable';
 
 const statusMap = {
   active: { label: 'พร้อมใช้งาน', color: 'text-green-600 bg-green-50' },
@@ -60,7 +61,7 @@ const MoldList = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const emptyForm = { moldCode: '', customer: '', partNumber: '', machineType: '', location: '', notes: '' };
+  const emptyForm = { moldCode: '', name: '', customer: '', partNumber: '', machineType: '', location: '', notes: '' };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -68,7 +69,7 @@ const MoldList = () => {
 
   const handleAddMold = async (e) => {
     e.preventDefault();
-    if (!form.moldCode) { toast.error('กรุณากรอกรหัสแม่พิมพ์'); return; }
+    if (!form.moldCode || !form.name) { toast.error('กรุณากรอกรหัสและชื่อแม่พิมพ์'); return; }
     setSaving(true);
     try {
       await moldsAPI.create(form);
@@ -85,6 +86,7 @@ const MoldList = () => {
     setEditingId(mold.id);
     setForm({
       moldCode: mold.moldCode || mold.mold_code || '',
+      name: mold.name || '',
       customer: mold.customer || '',
       partNumber: mold.partNumber || '',
       machineType: mold.machineType || '',
@@ -96,7 +98,7 @@ const MoldList = () => {
 
   const handleEditMold = async (e) => {
     e.preventDefault();
-    if (!form.moldCode) { toast.error('กรุณากรอกรหัสแม่พิมพ์'); return; }
+    if (!form.moldCode || !form.name) { toast.error('กรุณากรอกรหัสและชื่อแม่พิมพ์'); return; }
     setSaving(true);
     try {
       await moldsAPI.update(editingId, form);
@@ -111,6 +113,9 @@ const MoldList = () => {
   };
 
   const filtered = molds;
+
+  const uniqueCustomers = [...new Set(molds.map(m => m.customer).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const customerOptions = uniqueCustomers.map(c => ({ value: c, label: c }));
 
   return (
     <div>
@@ -216,8 +221,22 @@ const MoldList = () => {
               <input type="text" name="moldCode" value={form.moldCode} onChange={handleFormChange} placeholder="เช่น MOLD-009" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อแม่พิมพ์ *</label>
+              <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="เช่น แม่พิมพ์ฝาครอบ" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">ลูกค้า</label>
-              <input type="text" name="customer" value={form.customer} onChange={handleFormChange} placeholder="เช่น Toyota" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <CreatableSelect
+                isClearable
+                options={customerOptions}
+                value={form.customer ? { value: form.customer, label: form.customer } : null}
+                onChange={(selected) => handleFormChange({ target: { name: 'customer', value: selected ? selected.value : '' } })}
+                placeholder="เลือกลูกค้า หรือพิมพ์เพื่อเพิ่มใหม่..."
+                className="text-sm"
+                styles={{
+                  control: (base) => ({ ...base, borderColor: '#d1d5db', borderRadius: '0.5rem', padding: '2px 0' }),
+                }}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
@@ -252,8 +271,22 @@ const MoldList = () => {
               <input type="text" name="moldCode" value={form.moldCode} disabled className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-500" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อแม่พิมพ์ *</label>
+              <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="เช่น แม่พิมพ์ฝาครอบ" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">ลูกค้า</label>
-              <input type="text" name="customer" value={form.customer} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <CreatableSelect
+                isClearable
+                options={customerOptions}
+                value={form.customer ? { value: form.customer, label: form.customer } : null}
+                onChange={(selected) => handleFormChange({ target: { name: 'customer', value: selected ? selected.value : '' } })}
+                placeholder="เลือกลูกค้า หรือพิมพ์เพื่อเพิ่มใหม่..."
+                className="text-sm"
+                styles={{
+                  control: (base) => ({ ...base, borderColor: '#d1d5db', borderRadius: '0.5rem', padding: '2px 0' }),
+                }}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>

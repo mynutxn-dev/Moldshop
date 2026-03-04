@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiSearch, FiClipboard, FiUser, FiCalendar, FiChevronRight, FiTool, FiAlertCircle, FiCheck, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiClipboard, FiUser, FiCalendar, FiChevronRight, FiTool, FiAlertCircle, FiCheck, FiX, FiEdit2 } from 'react-icons/fi';
 import { workOrdersAPI, moldsAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -148,7 +148,7 @@ const WorkOrders = () => {
 
   // ===== Create Modal =====
   const [showModal, setShowModal] = useState(false);
-  const emptyForm = { title: '', type: 'new_mold', description: '', dueDate: '', status: 'mold_design' };
+  const emptyForm = { title: '', type: 'new_mold', description: '', dueDate: '', status: 'mold_design', customer: '' };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -207,6 +207,39 @@ const WorkOrders = () => {
       fetchData(); fetchSummary();
     } catch (err) { toast.error(err.response?.data?.message || 'อัปเดตไม่สำเร็จ'); }
     finally { setUpdating(false); }
+  };
+
+  // ===== Edit Info Modal =====
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingWO, setEditingWO] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', dueDate: '', description: '', customer: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openEditModal = (e, wo) => {
+    e.stopPropagation(); // Prevents opening the update stage modal
+    setEditingWO(wo);
+    setEditForm({
+      title: wo.title || '',
+      dueDate: wo.dueDate || '',
+      description: wo.description || '',
+      customer: wo.customer || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditChange = (e) => setEditForm({ ...editForm, [e.target.name]: e.target.value });
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.title) { toast.error('กรุณากรอกชื่องาน'); return; }
+    setSavingEdit(true);
+    try {
+      await workOrdersAPI.update(editingWO.id, editForm);
+      toast.success('อัปเดตข้อมูลสำเร็จ');
+      setShowEditModal(false);
+      fetchData();
+    } catch (err) { toast.error(err.response?.data?.message || 'อัปเดตไม่สำเร็จ'); }
+    finally { setSavingEdit(false); }
   };
 
   return (
@@ -271,53 +304,98 @@ const WorkOrders = () => {
         </div>
       </div>
 
-      {/* Cards */}
+      {/* Cards Grouped by Customer */}
       {loading ? <SkeletonList count={4} /> : (
-        <div className="space-y-3">
-          {items.map((wo) => {
-            const stage = stageMap[wo.status] || stageMap['mold_design'];
-            const pri = priorityMap[wo.priority] || priorityMap.normal;
-            return (
-              <div
-                key={wo.id}
-                onClick={() => openUpdateModal(wo)}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer"
-              >
-                {/* Top row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900 text-sm">{wo.orderCode}</span>
-                    <StagePipeline currentStatus={wo.status} compact />
-                    <span
-                      className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                      style={{ color: pri.color, background: pri.bg }}
-                    >
-                      {pri.label}
-                    </span>
+        <div className="space-y-6">
+          {(() => {
+            if (items.length === 0) {
+              return (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                  <FiClipboard className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">ไม่พบงาน New model</p>
+                </div>
+              );
+            }
+
+            // 1) Group items by customer
+            const groups = items.reduce((acc, wo) => {
+              const cust = wo.customer ? wo.customer.trim() : 'ไม่ระบุลูกค้า';
+              if (!acc[cust]) acc[cust] = [];
+              acc[cust].push(wo);
+              return acc;
+            }, {});
+
+            // 2) Sort group keys A-Z (Put "ไม่ระบุลูกค้า" at the end)
+            const sortedCustomers = Object.keys(groups).sort((a, b) => {
+              if (a === 'ไม่ระบุลูกค้า') return 1;
+              if (b === 'ไม่ระบุลูกค้า') return -1;
+              return a.localeCompare(b);
+            });
+
+            // 3) Render each group
+            return sortedCustomers.map(customer => (
+              <div key={customer} className="mb-6">
+                <div className="flex items-center gap-3 mb-3 pl-1">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold shadow-sm">
+                    {customer !== 'ไม่ระบุลูกค้า' ? customer.charAt(0).toUpperCase() : '?'}
                   </div>
-                  <span className="text-xs text-gray-400">{typeMap[wo.type] || wo.type}</span>
+                  <h2 className="text-lg font-bold text-gray-800">{customer}</h2>
+                  <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    {groups[customer].length} รายการ
+                  </span>
                 </div>
 
-                <h3 className="font-semibold text-gray-800 mb-2 text-[15px]">{wo.title}</h3>
+                <div className="space-y-3">
+                  {groups[customer].map((wo) => {
+                    const stage = stageMap[wo.status] || stageMap['mold_design'];
+                    const pri = priorityMap[wo.priority] || priorityMap.normal;
+                    return (
+                      <div
+                        key={wo.id}
+                        onClick={() => openUpdateModal(wo)}
+                        className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer ml-4"
+                      >
+                        {/* Top row */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900 text-sm">{wo.orderCode}</span>
+                            <StagePipeline currentStatus={wo.status} compact />
+                            <span
+                              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                              style={{ color: pri.color, background: pri.bg }}
+                            >
+                              {pri.label}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400">{typeMap[wo.type] || wo.type}</span>
+                        </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 mb-1">
-                  <span className="flex items-center gap-1"><FiClipboard size={11} />{wo.mold?.moldCode || 'ไม่ระบุแม่พิมพ์'}</span>
-                  <span className="flex items-center gap-1"><FiUser size={11} />{wo.assignedTo ? `${wo.assignedTo.firstName} ${wo.assignedTo.lastName}` : 'ยังไม่มอบหมาย'}</span>
-                  <span className="flex items-center gap-1"><FiCalendar size={11} />กำหนด: {wo.dueDate || '-'}</span>
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-gray-800 text-[15px] pr-4">{wo.title}</h3>
+                          <button
+                            onClick={(e) => openEditModal(e, wo)}
+                            className="text-gray-400 hover:text-indigo-600 p-1.5 rounded-md hover:bg-indigo-50 transition-colors"
+                            title="แก้ไขข้อมูล"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 mb-1">
+                          <span className="flex items-center gap-1"><FiClipboard size={11} />{wo.mold?.moldCode || 'ไม่ระบุแม่พิมพ์'}</span>
+                          <span className="flex items-center gap-1"><FiUser size={11} />{wo.assignedTo ? `${wo.assignedTo.firstName} ${wo.assignedTo.lastName}` : 'ยังไม่มอบหมาย'}</span>
+                          <span className="flex items-center gap-1"><FiCalendar size={11} />กำหนด: {wo.dueDate || '-'}</span>
+                        </div>
+
+                        {/* Stage Pipeline */}
+                        <StagePipeline currentStatus={wo.status} />
+                      </div>
+                    );
+                  })}
                 </div>
-
-                {/* Stage Pipeline */}
-                <StagePipeline currentStatus={wo.status} />
               </div>
-            );
-          })}
-
-          {items.length === 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-              <FiClipboard className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">ไม่พบงาน New model</p>
-            </div>
-          )}
+            ));
+          })()}
         </div>
       )}
 
@@ -329,6 +407,14 @@ const WorkOrders = () => {
             <input
               type="text" name="title" value={form.title} onChange={handleFormChange}
               placeholder="เช่น สร้างแม่พิมพ์ Part A"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อลูกค้า (Customer)</label>
+            <input
+              type="text" name="customer" value={form.customer} onChange={handleFormChange}
+              placeholder="เช่น Toyota, Honda..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
@@ -447,6 +533,49 @@ const WorkOrders = () => {
               <button type="button" onClick={() => setShowUpdateModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
               <button type="submit" disabled={updating} className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
                 {updating ? 'กำลังบันทึก...' : 'บันทึกสถานะ'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* ===== Edit Info Modal ===== */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="แก้ไขข้อมูล New Model" size="lg">
+        {editingWO && (
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ New Model *</label>
+              <input
+                type="text" name="title" value={editForm.title} onChange={handleEditChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อลูกค้า (Customer)</label>
+              <input
+                type="text" name="customer" value={editForm.customer} onChange={handleEditChange}
+                placeholder="เช่น Toyota, Honda..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">วันกำหนดเสร็จ</label>
+              <input
+                type="date" name="dueDate" value={editForm.dueDate} onChange={handleEditChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
+              <textarea
+                name="description" value={editForm.description} onChange={handleEditChange} rows="3"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+            <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">
+              <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+              <button type="submit" disabled={savingEdit} className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                {savingEdit ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
               </button>
             </div>
           </form>

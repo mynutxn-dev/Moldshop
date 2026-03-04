@@ -49,7 +49,7 @@ router.get('/', auth, async (req, res) => {
     const { count, rows } = await MaintenanceRequest.findAndCountAll({
       where,
       include: [
-        { model: Mold, as: 'mold', attributes: ['id', 'moldCode', 'name'] },
+        { model: Mold, as: 'mold', attributes: ['id', 'moldCode', 'name', 'customer'] },
         { model: User, as: 'requestedBy', attributes: ['id', 'firstName', 'lastName'] },
         { model: User, as: 'assignedTo', attributes: ['id', 'firstName', 'lastName'] },
       ],

@@ -5,6 +5,7 @@ import { maintenanceAPI, moldsAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { SkeletonList } from '../components/Skeleton';
+import Select from 'react-select';
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
 
@@ -66,7 +67,8 @@ const Maintenance = () => {
   // ===== Create Modal =====
   const [showModal, setShowModal] = useState(false);
   const [moldOptions, setMoldOptions] = useState([]);
-  const emptyForm = { moldId: '', type: 'repair', description: '', dueDate: '' };
+  const [selectedCustomer, setSelectedCustomer] = useState('');
+  const emptyForm = { moldId: '', type: 'repair', description: '', reportDate: new Date().toISOString().split('T')[0], productionDate: '' };
   const [form, setForm] = useState(emptyForm);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
@@ -75,6 +77,7 @@ const Maintenance = () => {
   const openModal = async () => {
     try { const { data } = await moldsAPI.getAll({ limit: 200 }); setMoldOptions(data.molds); } catch (e) { }
     setForm(emptyForm);
+    setSelectedCustomer('');
     setSelectedFiles([]);
     setPreviewUrls([]);
     setShowModal(true);
@@ -113,7 +116,8 @@ const Maintenance = () => {
       formData.append('moldId', form.moldId);
       formData.append('type', form.type);
       formData.append('description', form.description);
-      if (form.dueDate) formData.append('dueDate', form.dueDate);
+      if (form.reportDate) formData.append('reportDate', form.reportDate);
+      if (form.productionDate) formData.append('productionDate', form.productionDate);
       selectedFiles.forEach(file => formData.append('images', file));
 
       await maintenanceAPI.create(formData);
@@ -242,132 +246,211 @@ const Maintenance = () => {
         </div>
       </div>
 
-      {/* Cards */}
+      {/* Cards Grouped by Customer */}
       {loading ? <SkeletonList count={4} /> : (
-        <div className="space-y-3">
-          {filtered.map((item) => {
-            const s = statusMap[item.status] || statusMap.pending;
-            const images = item.images || [];
-            return (
-              <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:border-blue-300 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-semibold text-gray-900 text-sm">{item.requestCode}</span>
-                      <span className="text-gray-300">|</span>
-                      <span className="font-medium text-blue-600 text-sm">{item.mold?.moldCode || '-'}</span>
-                      <span className="text-xs text-gray-500">{typeMap[item.type] || item.type}</span>
-                    </div>
-                    <p className="text-gray-700 text-sm">{item.description}</p>
-                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>ผู้รับผิดชอบ: {item.assignedTo ? `${item.assignedTo.firstName} ${item.assignedTo.lastName}` : '-'}</span>
-                      <span>กำหนด: {item.dueDate || '-'}</span>
-                    </div>
-                    {/* Thumbnail images */}
-                    {images.length > 0 && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <FiImage className="text-gray-400 h-3.5 w-3.5 flex-shrink-0" />
-                        {images.slice(0, 3).map((img, i) => (
-                          <img
-                            key={i}
-                            src={`${API_BASE}${img}`}
-                            alt=""
-                            className="w-10 h-10 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
-                            onClick={(e) => { e.stopPropagation(); setLightboxImg(`${API_BASE}${img}`); }}
-                          />
-                        ))}
-                        {images.length > 3 && (
-                          <span className="text-xs text-gray-400">+{images.length - 3} รูป</span>
-                        )}
+        <div className="space-y-6">
+          {(() => {
+            if (filtered.length === 0) {
+              return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                  <FiTool className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">ไม่พบรายการงานแจ้งซ่อม</p>
+                </div>
+              );
+            }
+
+            // 1) Group items by customer
+            const groups = filtered.reduce((acc, item) => {
+              const cust = item.mold?.customer ? item.mold.customer.trim() : 'ไม่ระบุลูกค้า';
+              if (!acc[cust]) acc[cust] = [];
+              acc[cust].push(item);
+              return acc;
+            }, {});
+
+            // 2) Sort group keys A-Z (Put "ไม่ระบุลูกค้า" at the end)
+            const sortedCustomers = Object.keys(groups).sort((a, b) => {
+              if (a === 'ไม่ระบุลูกค้า') return 1;
+              if (b === 'ไม่ระบุลูกค้า') return -1;
+              return a.localeCompare(b);
+            });
+
+            // 3) Render each group
+            return sortedCustomers.map(customer => (
+              <div key={customer} className="mb-6">
+                <div className="flex items-center gap-3 mb-3 pl-1">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">
+                    {customer !== 'ไม่ระบุลูกค้า' ? customer.charAt(0).toUpperCase() : '?'}
+                  </div>
+                  <h2 className="text-lg font-bold text-gray-800">{customer}</h2>
+                  <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    {groups[customer].length} รายการ
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {groups[customer].map((item) => {
+                    const s = statusMap[item.status] || statusMap.pending;
+                    const images = item.images || [];
+                    return (
+                      <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:border-blue-300 transition-colors ml-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="font-semibold text-gray-900 text-sm">{item.requestCode}</span>
+                              <span className="text-gray-300">|</span>
+                              <span className="font-medium text-blue-600 text-sm">{item.mold?.moldCode || '-'}</span>
+                              <span className="text-xs text-gray-500">{typeMap[item.type] || item.type}</span>
+                            </div>
+                            <p className="text-gray-700 text-sm">{item.description}</p>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                              <span>ผู้รับผิดชอบ: {item.assignedTo ? `${item.assignedTo.firstName} ${item.assignedTo.lastName}` : '-'}</span>
+                              <span>วันที่แจ้ง: {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : new Date(item.createdAt).toLocaleDateString('th-TH')}</span>
+                              <span>วันขึ้นผลิต: {item.productionDate ? new Date(item.productionDate).toLocaleDateString('th-TH') : '-'}</span>
+                            </div>
+                            {/* Thumbnail images */}
+                            {images.length > 0 && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <FiImage className="text-gray-400 h-3.5 w-3.5 flex-shrink-0" />
+                                {images.slice(0, 3).map((img, i) => (
+                                  <img
+                                    key={i}
+                                    src={`${API_BASE}${img}`}
+                                    alt=""
+                                    className="w-10 h-10 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                    onClick={(e) => { e.stopPropagation(); setLightboxImg(`${API_BASE}${img}`); }}
+                                  />
+                                ))}
+                                {images.length > 3 && (
+                                  <span className="text-xs text-gray-400">+{images.length - 3} รูป</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button onClick={() => openUpdateModal(item)} className={`text-xs font-medium px-3 py-1.5 rounded-full ${s.color} hover:ring-2 hover:ring-blue-300 cursor-pointer transition-all`} title="คลิกเพื่ออัปเดตสถานะ">
+                              {s.label}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button onClick={() => openUpdateModal(item)} className={`text-xs font-medium px-3 py-1.5 rounded-full ${s.color} hover:ring-2 hover:ring-blue-300 cursor-pointer transition-all`} title="คลิกเพื่ออัปเดตสถานะ">
-                      {s.label}
-                    </button>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-            );
-          })}
-
-          {filtered.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <FiTool className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">ไม่พบรายการงานแจ้งซ่อม</p>
-            </div>
-          )}
+            ));
+          })()}
         </div>
       )}
 
       {/* ===== Create Maintenance Modal ===== */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="แจ้งงานแจ้งซ่อม" size="md">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">แม่พิมพ์ *</label>
-            <select name="moldId" value={form.moldId} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-              <option value="">เลือกแม่พิมพ์...</option>
-              {moldOptions.map(m => <option key={m.id} value={m.id}>{m.moldCode} - {m.name}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท *</label>
-              <select name="type" value={form.type} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                <option value="repair">ซ่อมแซม</option>
-                <option value="pm">PM (บำรุงรักษา)</option>
-                <option value="inspection">ตรวจสอบ</option>
-                <option value="cleaning">ทำความสะอาด</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">กำหนดเสร็จ</label>
-              <input type="date" name="dueDate" value={form.dueDate} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด *</label>
-            <textarea name="description" value={form.description} onChange={handleFormChange} rows="3" placeholder="อธิบายอาการและสิ่งที่ต้องการซ่อม..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
+        {(() => {
+          // 1) Compute unique customers from moldOptions
+          const rawCustomers = moldOptions.map(m => m.customer).filter(Boolean);
+          const uniqueCustomers = [...new Set(rawCustomers)].sort((a, b) => a.localeCompare(b));
 
-          {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">แนบรูปภาพ (สูงสุด 5 รูป)</label>
-            <label className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
-              <FiCamera className="h-5 w-5 text-gray-400" />
-              <span className="text-sm text-gray-500">เลือกรูปภาพ หรือถ่ายรูป</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </label>
-            {previewUrls.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {previewUrls.map((url, i) => (
-                  <div key={i} className="relative group">
-                    <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-200" />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(i)}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <FiX size={10} />
-                    </button>
-                  </div>
-                ))}
+          // 2) Filter molds based on selectedCustomer
+          const filteredMolds = selectedCustomer
+            ? moldOptions.filter(m => m.customer === selectedCustomer)
+            : moldOptions.sort((a, b) => a.moldCode.localeCompare(b.moldCode));
+
+          return (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">เลือกลูกค้า (Customer) - ตัวกรอง</label>
+                <Select
+                  options={uniqueCustomers.map(c => ({ value: c, label: c }))}
+                  value={selectedCustomer ? { value: selectedCustomer, label: selectedCustomer } : null}
+                  onChange={(selected) => {
+                    setSelectedCustomer(selected ? selected.value : '');
+                    setForm({ ...form, moldId: '' }); // Reset mold when customer changes
+                  }}
+                  isClearable
+                  placeholder="-- แสดงแม่พิมพ์ทั้งหมด --"
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({ ...base, borderColor: '#d1d5db', borderRadius: '0.5rem', padding: '2px 0' }),
+                  }}
+                />
               </div>
-            )}
-          </div>
 
-          <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
-            <button type="submit" disabled={saving} className="px-6 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50">{saving ? 'กำลังบันทึก...' : 'แจ้งซ่อม'}</button>
-          </div>
-        </form>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">แม่พิมพ์ *</label>
+                <Select
+                  options={filteredMolds.map(m => ({ value: m.id, label: `${m.moldCode} - ${m.name}` }))}
+                  value={form.moldId ? { value: form.moldId, label: filteredMolds.find(m => m.id === form.moldId)?.moldCode + ' - ' + filteredMolds.find(m => m.id === form.moldId)?.name } : null}
+                  onChange={(selected) => handleFormChange({ target: { name: 'moldId', value: selected ? selected.value : '' } })}
+                  isClearable
+                  placeholder={selectedCustomer ? `เลือกแม่พิมพ์ของ ${selectedCustomer}...` : 'เลือกแม่พิมพ์...'}
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({ ...base, borderColor: '#d1d5db', borderRadius: '0.5rem', padding: '2px 0' }),
+                  }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท *</label>
+                  <select name="type" value={form.type} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <option value="repair">ซ่อมแซม</option>
+                    <option value="pm">PM (บำรุงรักษา)</option>
+                    <option value="inspection">ตรวจสอบ</option>
+                    <option value="cleaning">ทำความสะอาด</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">วันที่แจ้งซ่อม</label>
+                  <input type="date" name="reportDate" value={form.reportDate} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">วันขึ้นผลิต (Production Date)</label>
+                  <input type="date" name="productionDate" value={form.productionDate} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด *</label>
+                <textarea name="description" value={form.description} onChange={handleFormChange} rows="3" placeholder="อธิบายอาการและสิ่งที่ต้องการซ่อม..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+
+              {/* Image Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">แนบรูปภาพ (สูงสุด 5 รูป)</label>
+                <label className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
+                  <FiCamera className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-500">เลือกรูปภาพ หรือถ่ายรูป</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+                {previewUrls.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {previewUrls.map((url, i) => (
+                      <div key={i} className="relative group">
+                        <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-200" />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <FiX size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+                <button type="submit" disabled={saving} className="px-6 py-2 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 disabled:opacity-50">{saving ? 'กำลังบันทึก...' : 'แจ้งซ่อม'}</button>
+              </div>
+            </form>
+          );
+        })()}
       </Modal>
 
       {/* ===== Update / Detail Modal ===== */}

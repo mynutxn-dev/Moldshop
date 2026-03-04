@@ -68,14 +68,14 @@ const MaintenanceCalendar = () => {
   const monthEnd = new Date(year, month, daysInMonth, 23, 59, 59);
 
   const visibleItems = items.filter(item => {
-    const start = new Date(item.createdAt);
-    const end = item.dueDate ? new Date(item.dueDate) : (item.completedDate ? new Date(item.completedDate) : start);
+    const start = new Date(item.reportDate || item.createdAt);
+    const end = item.productionDate ? new Date(item.productionDate) : (item.completedDate ? new Date(item.completedDate) : start);
     return start <= monthEnd && end >= monthStart;
   });
 
   const getBarPosition = (item) => {
-    const start = new Date(item.createdAt);
-    const end = item.dueDate ? new Date(item.dueDate) : (item.completedDate ? new Date(item.completedDate) : start);
+    const start = new Date(item.reportDate || item.createdAt);
+    const end = item.productionDate ? new Date(item.productionDate) : (item.completedDate ? new Date(item.completedDate) : start);
 
     let startDay = start.getFullYear() === year && start.getMonth() === month ? start.getDate() : 1;
     let endDay = end.getFullYear() === year && end.getMonth() === month ? end.getDate() : daysInMonth;
@@ -209,7 +209,7 @@ const MaintenanceCalendar = () => {
                           }}
                         >
                           <div className={`w-full h-7 ${barColor} rounded-md border-2 ${borderColor} flex items-center px-2 shadow-sm cursor-default group-hover:shadow-md transition-shadow`}
-                            title={`${item.requestCode}: ${item.description}\n${new Date(item.createdAt).toLocaleDateString('th-TH')} → ${item.dueDate || '?'}\nสถานะ: ${statusLabels[item.status]}`}
+                            title={`${item.requestCode}: ${item.description}\nวันที่แจ้ง: ${item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : new Date(item.createdAt).toLocaleDateString('th-TH')}\nวันขึ้นผลิต: ${item.productionDate || '?'}\nสถานะ: ${statusLabels[item.status]}`}
                           >
                             <span className="text-[10px] font-bold text-white truncate drop-shadow-sm">
                               {moldCode} ({totalDays} วัน) — {statusLabels[item.status]}

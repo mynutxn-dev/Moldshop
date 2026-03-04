@@ -26,6 +26,10 @@ const WorkOrder = sequelize.define('WorkOrder', {
     type: DataTypes.ENUM('new_mold', 'modify', 'repair', 'trial', 'improvement'),
     allowNull: false,
   },
+  customer: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
   description: {
     type: DataTypes.TEXT,
     allowNull: true,

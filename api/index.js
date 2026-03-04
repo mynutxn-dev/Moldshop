@@ -48,12 +48,12 @@ try {
         res.status(500).json({ message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
     });
 
-    // Initialize DB connection (lazy)
-    let dbReady = false;
+    // Global connection state for serverless reuse
+    let isConnected = false;
     const ensureDB = async () => {
-        if (!dbReady) {
+        if (!isConnected) {
             await testConnection();
-            dbReady = true;
+            isConnected = true;
         }
     };
 
