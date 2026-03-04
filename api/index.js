@@ -55,6 +55,7 @@ try {
     const ensureDB = async () => {
         if (!isConnected) {
             await testConnection();
+            await sequelize.sync({ alter: true });
             isConnected = true;
         }
     };
