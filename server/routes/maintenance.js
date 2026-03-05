@@ -4,20 +4,12 @@ const path = require('path');
 const { MaintenanceRequest, Mold, User } = require('../models');
 const { auth, technicianUp } = require('../middleware/auth');
 const { Op } = require('sequelize');
+const { uploadImage } = require('../config/supabaseStorage');
 const router = express.Router();
 
-// Multer config for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads/maintenance'));
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `mt-${Date.now()}-${Math.round(Math.random() * 1000)}${ext}`);
-  },
-});
+// Multer config - use memoryStorage for serverless (Vercel)
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp/;
@@ -28,6 +20,19 @@ const upload = multer({
     }
   },
 });
+
+/**
+ * Upload files from req.files to Supabase Storage
+ * @param {Array} files - req.files from multer
+ * @returns {Array<string>} Array of public URLs
+ */
+const uploadFilesToSupabase = async (files) => {
+  if (!files || files.length === 0) return [];
+  const urls = await Promise.all(
+    files.map(f => uploadImage(f.buffer, f.originalname, f.mimetype))
+  );
+  return urls;
+};
 
 // GET /api/maintenance - ดึงรายการซ่อมบำรุงทั้งหมด
 router.get('/', auth, async (req, res) => {
@@ -87,13 +92,14 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// POST /api/maintenance - สร้างใบแจ้งซ่อม (with images)
+// POST /api/maintenance - สร้างใบแจ้งซ่อม (with images via Supabase Storage)
 router.post('/', auth, upload.array('images', 5), async (req, res) => {
   try {
     const count = await MaintenanceRequest.count();
     const requestCode = `MT-${String(count + 1).padStart(4, '0')}`;
 
-    const imageUrls = req.files ? req.files.map(f => `/uploads/maintenance/${f.filename}`) : [];
+    // Upload to Supabase Storage
+    const imageUrls = await uploadFilesToSupabase(req.files);
 
     const request = await MaintenanceRequest.create({
       requestCode,
@@ -104,7 +110,7 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
     res.status(201).json(request);
   } catch (error) {
     console.error('Create maintenance error:', error);
-    res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
+    res.status(500).json({ message: 'เกิดข้อผิดพลาด: ' + error.message });
   }
 });
 
@@ -114,14 +120,15 @@ router.post('/:id/images', auth, upload.array('images', 5), async (req, res) => 
     const request = await MaintenanceRequest.findByPk(req.params.id);
     if (!request) return res.status(404).json({ message: 'ไม่พบรายการ' });
 
-    const newImages = req.files ? req.files.map(f => `/uploads/maintenance/${f.filename}`) : [];
+    // Upload to Supabase Storage
+    const newImages = await uploadFilesToSupabase(req.files);
     const existing = request.images || [];
     await request.update({ images: [...existing, ...newImages] });
 
     res.json(request);
   } catch (error) {
     console.error('Upload images error:', error);
-    res.status(500).json({ message: 'อัพโหลดรูปไม่สำเร็จ' });
+    res.status(500).json({ message: 'อัพโหลดรูปไม่สำเร็จ: ' + error.message });
   }
 });
 

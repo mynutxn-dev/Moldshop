@@ -9,6 +9,9 @@ import Select from 'react-select';
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
 
+// Helper: Supabase URLs are full URLs (https://...), legacy local paths start with /uploads/
+const getImageUrl = (img) => img?.startsWith('http') ? img : `${API_BASE}${img}`;
+
 const statusMap = {
   pending: { label: 'รอดำเนินการ', color: 'text-gray-600 bg-gray-100' },
   in_progress: { label: 'กำลังซ่อม', color: 'text-orange-600 bg-orange-50' },
@@ -314,10 +317,10 @@ const Maintenance = () => {
                                 {images.slice(0, 3).map((img, i) => (
                                   <img
                                     key={i}
-                                    src={`${API_BASE}${img}`}
+                                    src={getImageUrl(img)}
                                     alt=""
                                     className="w-10 h-10 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
-                                    onClick={(e) => { e.stopPropagation(); setLightboxImg(`${API_BASE}${img}`); }}
+                                    onClick={(e) => { e.stopPropagation(); setLightboxImg(getImageUrl(img)); }}
                                   />
                                 ))}
                                 {images.length > 3 && (
@@ -470,10 +473,10 @@ const Maintenance = () => {
                   {updatingItem.images.map((img, i) => (
                     <img
                       key={i}
-                      src={`${API_BASE}${img}`}
+                      src={getImageUrl(img)}
                       alt=""
                       className="w-20 h-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
-                      onClick={() => setLightboxImg(`${API_BASE}${img}`)}
+                      onClick={() => setLightboxImg(getImageUrl(img))}
                     />
                   ))}
                 </div>
