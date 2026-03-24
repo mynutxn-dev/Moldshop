@@ -11,10 +11,10 @@ const priorityColors = {
 };
 
 const statusColors = {
-  pending: 'bg-gray-400',
-  in_progress: 'bg-amber-500',
-  completed: 'bg-green-500',
-  cancelled: 'bg-red-300',
+  pending: 'bg-amber-500',
+  in_progress: 'bg-blue-500',
+  completed: 'bg-emerald-500',
+  cancelled: 'bg-gray-400',
 };
 
 const statusLabels = {
@@ -162,7 +162,7 @@ const MaintenanceCalendar = () => {
                 <div className="p-8 text-center text-gray-400 text-sm">ไม่มีรายการงานแจ้งซ่อมในเดือนนี้</div>
               ) : (
                 visibleItems.map(item => {
-                  const { startDay, endDay, totalDays } = getBarPosition(item);
+                  const { startDay, totalDays } = getBarPosition(item);
                   const barColor = statusColors[item.status] || 'bg-gray-400';
                   const borderColor = (item.priority === 'urgent' || item.priority === 'high') ? 'border-red-500' : 'border-blue-400';
                   const moldCode = item.mold?.moldCode || item.requestCode;

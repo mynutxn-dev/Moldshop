@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { FiPlus, FiSearch, FiEye, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { moldsAPI } from '../services/api';
@@ -8,11 +8,11 @@ import { SkeletonTable } from '../components/Skeleton';
 import CreatableSelect from 'react-select/creatable';
 
 const statusMap = {
-  active: { label: 'พร้อมใช้งาน', color: 'text-green-600 bg-green-50' },
-  in_use: { label: 'ใช้งานอยู่', color: 'text-blue-600 bg-blue-50' },
-  maintenance: { label: 'กำลังซ่อม', color: 'text-orange-600 bg-orange-50' },
-  damaged: { label: 'ชำรุด', color: 'text-red-600 bg-red-50' },
-  retired: { label: 'ปลดระวาง', color: 'text-gray-600 bg-gray-100' },
+  active: { label: 'พร้อมใช้งาน', tone: 'status-pill-completed' },
+  in_use: { label: 'ใช้งานอยู่', tone: 'status-pill-progress' },
+  maintenance: { label: 'กำลังซ่อม', tone: 'status-pill-pending' },
+  damaged: { label: 'ชำรุด', tone: 'status-pill-cancelled' },
+  retired: { label: 'ปลดระวาง', tone: 'status-pill-cancelled' },
 };
 
 const MoldList = () => {
@@ -22,7 +22,7 @@ const MoldList = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const fetchMolds = async () => {
+  const fetchMolds = useCallback(async () => {
     try {
       setLoading(true);
       const params = { limit: 50 };
@@ -36,16 +36,11 @@ const MoldList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchMolds();
-  }, [statusFilter]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchMolds();
-  };
+  }, [fetchMolds]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('ต้องการลบแม่พิมพ์นี้?')) return;
@@ -113,40 +108,72 @@ const MoldList = () => {
   };
 
   const filtered = molds;
+  const statusCounts = {
+    active: molds.filter((mold) => mold.status === 'active').length,
+    in_use: molds.filter((mold) => mold.status === 'in_use').length,
+    maintenance: molds.filter((mold) => mold.status === 'maintenance').length,
+    damaged: molds.filter((mold) => mold.status === 'damaged').length,
+  };
 
   const uniqueCustomers = [...new Set(molds.map(m => m.customer).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const customerOptions = uniqueCustomers.map(c => ({ value: c, label: c }));
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการแม่พิมพ์</h1>
-          <p className="text-gray-500 mt-1">ทะเบียนแม่พิมพ์ทั้งหมดในระบบ</p>
+    <div className="space-y-6">
+      <section className="page-hero animate-fade-in-up">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="page-kicker">Mold Registry</p>
+            <h1 className="page-title">จัดการทะเบียนแม่พิมพ์ให้ค้นหาเร็วและเห็นสถานะได้ชัดขึ้น</h1>
+            <p className="page-subtitle">
+              ตรวจสอบแม่พิมพ์ทั้งหมดในระบบ พร้อมดูสถานะ ลูกค้า ตำแหน่งจัดเก็บ และเข้าถึงหน้า detail หรือแก้ไขข้อมูลได้รวดเร็วจากพื้นที่เดียว
+            </p>
+          </div>
+          <div className="page-actions">
+            <button onClick={() => setShowAddModal(true)} className="btn-primary">
+              <FiPlus className="h-4 w-4" /> เพิ่มแม่พิมพ์
+            </button>
+          </div>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-          <FiPlus className="mr-2 h-4 w-4" /> เพิ่มแม่พิมพ์
-        </button>
-      </div>
+        <div className="overview-strip">
+          <div className="overview-card overview-card--primary">
+            <span className="overview-card-label">แม่พิมพ์ทั้งหมด</span>
+            <strong className="overview-card-value">{total}</strong>
+            <span className="overview-card-meta">รายการในทะเบียนหลัก</span>
+          </div>
+          <div className="overview-card overview-card--success">
+            <span className="overview-card-label">พร้อมใช้งาน</span>
+            <strong className="overview-card-value">{statusCounts.active}</strong>
+            <span className="overview-card-meta">พร้อมใช้ใน production</span>
+          </div>
+          <div className="overview-card overview-card--warning">
+            <span className="overview-card-label">กำลังซ่อม</span>
+            <strong className="overview-card-value">{statusCounts.maintenance}</strong>
+            <span className="overview-card-meta">อยู่ระหว่างซ่อมบำรุง</span>
+          </div>
+          <div className="overview-card overview-card--neutral">
+            <span className="overview-card-label">ใช้งานอยู่ / ชำรุด</span>
+            <strong className="overview-card-value">{statusCounts.in_use + statusCounts.damaged}</strong>
+            <span className="overview-card-meta">ต้องติดตามเพิ่มเติม</span>
+          </div>
+        </div>
+      </section>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <FiSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      <div className="filter-surface">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="search-field flex-1">
+            <FiSearch className="h-4 w-4" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหา รหัส, ชื่อ, ลูกค้า..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="filter-select sm:w-60"
           >
             <option value="">สถานะทั้งหมด</option>
             <option value="active">พร้อมใช้งาน</option>
@@ -158,44 +185,43 @@ const MoldList = () => {
         </div>
       </div>
 
-      {/* Table */}
       {loading ? <SkeletonTable rows={6} cols={7} /> : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="table-shell">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">รหัส</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">ชื่อแม่พิมพ์</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">ลูกค้า</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Mold Size</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">ตำแหน่ง</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">สถานะ</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-600">จัดการ</th>
+                <tr>
+                  <th className="text-left">รหัส</th>
+                  <th className="text-left">ชื่อแม่พิมพ์</th>
+                  <th className="hidden text-left md:table-cell">ลูกค้า</th>
+                  <th className="hidden text-left lg:table-cell">Mold Size</th>
+                  <th className="hidden text-left lg:table-cell">ตำแหน่ง</th>
+                  <th className="text-left">สถานะ</th>
+                  <th className="text-right">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {filtered.map((mold) => (
-                  <tr key={mold.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-blue-600">{mold.moldCode || mold.mold_code}</td>
-                    <td className="px-4 py-3 text-gray-900">{mold.name}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{mold.customer}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{mold.machineType || '-'}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{mold.location}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${(statusMap[mold.status] || statusMap.active).color}`}>
+                  <tr key={mold.id}>
+                    <td className="table-code">{mold.moldCode || mold.mold_code}</td>
+                    <td className="text-slate-900">{mold.name}</td>
+                    <td className="hidden md:table-cell">{mold.customer || '-'}</td>
+                    <td className="hidden lg:table-cell">{mold.machineType || '-'}</td>
+                    <td className="hidden lg:table-cell">{mold.location || '-'}</td>
+                    <td>
+                      <span className={`status-pill ${(statusMap[mold.status] || statusMap.active).tone}`}>
                         {(statusMap[mold.status] || statusMap.active).label}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end space-x-1">
-                        <Link to={`/molds/${mold.id}`} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50">
+                    <td>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link to={`/molds/${mold.id}`} className="action-icon-button" title="ดูรายละเอียด">
                           <FiEye className="h-4 w-4" />
                         </Link>
-                        <button onClick={() => openEditModal(mold)} className="p-1.5 text-gray-400 hover:text-orange-600 rounded hover:bg-orange-50">
+                        <button onClick={() => openEditModal(mold)} className="action-icon-button" title="แก้ไข">
                           <FiEdit2 className="h-4 w-4" />
                         </button>
-                        <button onClick={() => handleDelete(mold.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50">
+                        <button onClick={() => handleDelete(mold.id)} className="action-icon-button is-danger" title="ลบ">
                           <FiTrash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -205,8 +231,7 @@ const MoldList = () => {
               </tbody>
             </table>
           </div>
-          {/* Footer */}
-          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
+          <div className="table-footer-note">
             แสดง {filtered.length} จาก {total} รายการ
           </div>
         </div>

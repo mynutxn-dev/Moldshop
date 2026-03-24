@@ -94,6 +94,17 @@ const WorkOrder = sequelize.define('WorkOrder', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  images: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const raw = this.getDataValue('images');
+      return raw ? JSON.parse(raw) : [];
+    },
+    set(val) {
+      this.setDataValue('images', val ? JSON.stringify(val) : null);
+    },
+  },
 }, {
   tableName: 'work_orders',
   timestamps: true,

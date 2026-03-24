@@ -4,7 +4,7 @@ const path = require('path');
 const { MaintenanceRequest, Mold, User } = require('../models');
 const { auth, technicianUp } = require('../middleware/auth');
 const { Op } = require('sequelize');
-const { uploadImage } = require('../config/supabaseStorage');
+const { uploadImage, deleteImage } = require('../config/supabaseStorage');
 const router = express.Router();
 
 // Multer config - use memoryStorage for serverless (Vercel)
@@ -12,11 +12,11 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp/;
-    if (allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype.split('/')[1])) {
+    const allowed = /jpeg|jpg|png|gif|webp|heic|octet-stream/;
+    if (allowed.test(path.extname(file.originalname).toLowerCase()) || allowed.test(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error(`Only image files are allowed. Got type: ${file.mimetype}, name: ${file.originalname}`));
     }
   },
 });
@@ -46,7 +46,12 @@ router.get('/', auth, async (req, res) => {
         { description: { [Op.iLike]: `%${search}%` } },
       ];
     }
-    if (status) where.status = status;
+    if (status) {
+      where.status = status;
+    } else {
+      where.status = { [Op.ne]: 'cancelled' };
+    }
+
     if (priority) where.priority = priority;
     if (type) where.type = type;
 
@@ -129,6 +134,30 @@ router.post('/:id/images', auth, upload.array('images', 5), async (req, res) => 
   } catch (error) {
     console.error('Upload images error:', error);
     res.status(500).json({ message: 'อัพโหลดรูปไม่สำเร็จ: ' + error.message });
+  }
+});
+
+// DELETE /api/maintenance/:id/images - ลบรูปภาพ
+router.delete('/:id/images', auth, async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findByPk(req.params.id);
+    if (!request) return res.status(404).json({ message: 'ไม่พบรายการ' });
+
+    const { imageUrl } = req.body;
+    if (!imageUrl) return res.status(400).json({ message: 'กรุณาระบุ imageUrl' });
+
+    // Delete from Supabase Storage
+    await deleteImage(imageUrl);
+
+    // Remove from database
+    const existing = request.images || [];
+    const updated = existing.filter(img => img !== imageUrl);
+    await request.update({ images: updated });
+
+    res.json({ ...request.toJSON(), images: updated });
+  } catch (error) {
+    console.error('Delete image error:', error);
+    res.status(500).json({ message: 'ลบรูปไม่สำเร็จ: ' + error.message });
   }
 });
 

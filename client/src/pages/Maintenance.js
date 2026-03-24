@@ -1,24 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiSearch, FiTool, FiClock, FiCheckCircle, FiAlertCircle, FiCalendar, FiCamera, FiImage, FiX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiTool, FiClock, FiCheckCircle, FiAlertCircle, FiCalendar, FiCamera, FiX, FiEdit2, FiUser, FiArrowLeft } from 'react-icons/fi';
 import { maintenanceAPI, moldsAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { SkeletonList } from '../components/Skeleton';
 import Select from 'react-select';
+import imageCompression from 'browser-image-compression';
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
 
 // Helper: Supabase URLs are full URLs (https://...), legacy local paths start with /uploads/
 const getImageUrl = (img) => img?.startsWith('http') ? img : `${API_BASE}${img}`;
 
+// Helper: Compress image before upload
+const compressImage = async (file) => {
+  const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: true };
+  try { return await imageCompression(file, options); }
+  catch (error) { console.error('Compression error:', error); return file; }
+};
+
 const statusMap = {
-  pending: { label: 'รอดำเนินการ', color: 'text-gray-600 bg-gray-100' },
-  in_progress: { label: 'กำลังซ่อม', color: 'text-orange-600 bg-orange-50' },
-  completed: { label: 'เสร็จสิ้น', color: 'text-green-600 bg-green-50' },
-  cancelled: { label: 'ยกเลิก', color: 'text-red-600 bg-red-50' },
+  pending: { label: 'รอดำเนินการ', tone: 'status-pill-pending' },
+  in_progress: { label: 'กำลังซ่อม', tone: 'status-pill-progress' },
+  completed: { label: 'เสร็จสิ้น', tone: 'status-pill-completed' },
+  cancelled: { label: 'ยกเลิก', tone: 'status-pill-cancelled' },
 };
 const typeMap = { repair: 'ซ่อมแซม', pm: 'PM', inspection: 'ตรวจสอบ', cleaning: 'ทำความสะอาด' };
+const maintenanceTabs = [
+  { key: 'all', label: 'ทั้งหมด', icon: FiTool },
+  { key: 'pending', label: 'รอดำเนินการ', icon: FiAlertCircle },
+  { key: 'working', label: 'กำลังซ่อม', icon: FiClock },
+  { key: 'done', label: 'เสร็จสิ้น', icon: FiCheckCircle },
+];
 
 const Maintenance = () => {
   const [items, setItems] = useState([]);
@@ -28,7 +42,7 @@ const Maintenance = () => {
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({ all: 0, pending: 0, working: 0, done: 0 });
 
-  const fetchData = async (statusParam) => {
+  const fetchData = useCallback(async (statusParam) => {
     try {
       setLoading(true);
       const params = { limit: 50 };
@@ -45,9 +59,9 @@ const Maintenance = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
 
-  const fetchCounts = async () => {
+  const fetchCounts = useCallback(async () => {
     try {
       const [allRes, pendingRes, workingRes, doneRes] = await Promise.all([
         maintenanceAPI.getAll({ limit: 1 }),
@@ -62,10 +76,10 @@ const Maintenance = () => {
         done: doneRes.data.total,
       });
     } catch (err) { console.error(err); }
-  };
+  }, []);
 
-  useEffect(() => { fetchCounts(); }, []);
-  useEffect(() => { fetchData(tab); }, [tab]);
+  useEffect(() => { fetchCounts(); }, [fetchCounts]);
+  useEffect(() => { fetchData(tab); }, [tab, fetchData]);
 
   // ===== Create Modal =====
   const [showModal, setShowModal] = useState(false);
@@ -121,7 +135,11 @@ const Maintenance = () => {
       formData.append('description', form.description);
       if (form.reportDate) formData.append('reportDate', form.reportDate);
       if (form.productionDate) formData.append('productionDate', form.productionDate);
-      selectedFiles.forEach(file => formData.append('images', file));
+
+      for (const file of selectedFiles) {
+        const compressedFile = await compressImage(file);
+        formData.append('images', compressedFile, compressedFile.name || file.name || 'image.jpg');
+      }
 
       await maintenanceAPI.create(formData);
       toast.success('แจ้งซ่อมสำเร็จ');
@@ -142,15 +160,20 @@ const Maintenance = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updatingItem, setUpdatingItem] = useState(null);
   const [userOptions, setUserOptions] = useState([]);
-  const [updateForm, setUpdateForm] = useState({ status: '', assignedToId: '' });
+  const [updateForm, setUpdateForm] = useState({ status: '', assignedToId: '', description: '', type: 'repair', reportDate: '', productionDate: '' });
   const [updating, setUpdating] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const openUpdateModal = async (item) => {
     setUpdatingItem(item);
     setUpdateForm({
       status: item.status || 'pending',
       assignedToId: item.assignedToId || '',
+      description: item.description || '',
+      type: item.type || 'repair',
+      reportDate: item.reportDate || '',
+      productionDate: item.productionDate || '',
     });
     try { const { data } = await usersAPI.getAll(); setUserOptions(data); } catch (e) { }
     setShowUpdateModal(true);
@@ -160,15 +183,33 @@ const Maintenance = () => {
     e.preventDefault();
     setUpdating(true);
     try {
-      const payload = { status: updateForm.status };
+      const payload = {
+        status: updateForm.status,
+        description: updateForm.description,
+        type: updateForm.type,
+        reportDate: updateForm.reportDate || null,
+        productionDate: updateForm.productionDate || null,
+      };
       if (updateForm.assignedToId) payload.assignedToId = updateForm.assignedToId;
       if (updateForm.status === 'completed') payload.completedDate = new Date().toISOString();
       await maintenanceAPI.update(updatingItem.id, payload);
-      toast.success('อัปเดตสถานะสำเร็จ');
+      toast.success('อัปเดตสำเร็จ');
       setShowUpdateModal(false);
       fetchData(tab); fetchCounts();
     } catch (err) { toast.error(err.response?.data?.message || 'อัปเดตไม่สำเร็จ'); }
     finally { setUpdating(false); }
+  };
+
+  const handleCloseRequest = async () => {
+    if (!updatingItem) return;
+    setClosing(true);
+    try {
+      await maintenanceAPI.update(updatingItem.id, { status: 'cancelled' });
+      toast.success('ปิดงานแจ้งซ่อมสำเร็จ');
+      setShowUpdateModal(false);
+      fetchData(tab); fetchCounts();
+    } catch (err) { toast.error('ปิดงานไม่สำเร็จ'); }
+    finally { setClosing(false); }
   };
 
   const handleUploadMoreImages = async (e) => {
@@ -177,7 +218,10 @@ const Maintenance = () => {
     setUploadingImages(true);
     try {
       const formData = new FormData();
-      files.forEach(file => formData.append('images', file));
+      for (const file of files) {
+        const compressedFile = await compressImage(file);
+        formData.append('images', compressedFile, compressedFile.name || file.name || 'image.jpg');
+      }
       const { data } = await maintenanceAPI.uploadImages(updatingItem.id, formData);
       setUpdatingItem(data);
       toast.success('อัพโหลดรูปสำเร็จ');
@@ -189,75 +233,95 @@ const Maintenance = () => {
     }
   };
 
+  const handleDeleteImage = async (imageUrl) => {
+    if (!updatingItem) return;
+    try {
+      const { data } = await maintenanceAPI.deleteImage(updatingItem.id, imageUrl);
+      setUpdatingItem(data);
+      toast.success('ลบรูปสำเร็จ');
+      fetchData(tab);
+    } catch (err) {
+      toast.error('ลบรูปไม่สำเร็จ');
+    }
+  };
+
   // ===== Image Lightbox =====
   const [lightboxImg, setLightboxImg] = useState(null);
 
   const filtered = items;
+  const overviewCards = [
+    { label: 'ทั้งหมด', value: total, meta: 'งานแจ้งซ่อมในระบบ', tone: 'primary' },
+    { label: 'รอดำเนินการ', value: counts.pending, meta: 'รอทีมรับงาน', tone: 'warning' },
+    { label: 'กำลังซ่อม', value: counts.working, meta: 'อยู่ระหว่างดำเนินการ', tone: 'neutral' },
+    { label: 'เสร็จสิ้น', value: counts.done, meta: 'ปิดงานแล้ว', tone: 'success' },
+  ];
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">งานแจ้งซ่อม</h1>
-          <p className="text-gray-500 mt-1">รายการแจ้งซ่อมและบำรุงรักษาแม่พิมพ์</p>
+    <div className="space-y-6">
+      <section className="page-hero animate-fade-in-up">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="page-kicker">Maintenance Operations</p>
+            <h1 className="page-title">จัดการงานแจ้งซ่อมและบำรุงรักษาแม่พิมพ์ในมุมมองเดียว</h1>
+            <p className="page-subtitle">
+              ติดตามงานที่กำลังรอ งานที่อยู่ระหว่างซ่อม และงานที่ปิดแล้วได้จากพื้นที่เดียว พร้อมเข้า modal เพื่ออัปเดตสถานะหรือแนบรูปเพิ่มเติมได้ทันที
+            </p>
+          </div>
+          <div className="page-actions">
+            <Link to="/maintenance/calendar" className="btn-secondary">
+              <FiCalendar className="h-4 w-4" /> ปฏิทินแผนซ่อม
+            </Link>
+            <button onClick={openModal} className="btn-primary">
+              <FiPlus className="h-4 w-4" /> แจ้งซ่อม
+            </button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2 mt-3 sm:mt-0">
-          <Link to="/maintenance/calendar" className="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            <FiCalendar className="mr-2 h-4 w-4" /> ปฏิทินแผนซ่อม
-          </Link>
-          <button onClick={openModal} className="inline-flex items-center px-4 py-2.5 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
-            <FiPlus className="mr-2 h-4 w-4" /> แจ้งซ่อม
-          </button>
+        <div className="overview-strip">
+          {overviewCards.map((card) => (
+            <div key={card.label} className={`overview-card overview-card--${card.tone}`}>
+              <span className="overview-card-label">{card.label}</span>
+              <strong className="overview-card-value">{card.value}</strong>
+              <span className="overview-card-meta">{card.meta}</span>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-white rounded-xl shadow-sm border border-gray-200 p-1 mb-4">
-        {[
-          { key: 'all', label: 'ทั้งหมด', icon: FiTool },
-          { key: 'pending', label: 'รอดำเนินการ', icon: FiAlertCircle },
-          { key: 'working', label: 'กำลังซ่อม', icon: FiClock },
-          { key: 'done', label: 'เสร็จสิ้น', icon: FiCheckCircle },
-        ].map((t) => (
+      <div className="segmented-surface">
+        {maintenanceTabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors
-              ${tab === t.key ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`segmented-button ${tab === t.key ? 'is-active' : ''}`}
           >
             <t.icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{t.label}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === t.key ? 'bg-blue-500' : 'bg-gray-200'}`}>
-              {counts[t.key]}
-            </span>
+            <span>{t.label}</span>
+            <span className="segmented-counter">{counts[t.key]}</span>
           </button>
         ))}
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-        <div className="relative">
-          <FiSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      <div className="filter-surface">
+        <div className="search-field">
+          <FiSearch className="h-4 w-4" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหา รหัสแม่พิมพ์, รายละเอียด..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="ค้นหา รหัสแม่พิมพ์, รายละเอียด, หรือ request code..."
           />
         </div>
       </div>
 
-      {/* Cards Grouped by Customer */}
       {loading ? <SkeletonList count={4} /> : (
         <div className="space-y-6">
           {(() => {
             if (filtered.length === 0) {
               return (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                  <FiTool className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">ไม่พบรายการงานแจ้งซ่อม</p>
+                <div className="empty-state-card">
+                  <FiTool className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                  <p className="text-base font-semibold text-slate-900">ไม่พบรายการงานแจ้งซ่อม</p>
+                  <p className="mt-2 text-sm text-slate-500">ลองปรับคำค้นหาหรือเปิดงานแจ้งซ่อมใหม่เพื่อเริ่มต้น</p>
                 </div>
               );
             }
@@ -279,14 +343,17 @@ const Maintenance = () => {
 
             // 3) Render each group
             return sortedCustomers.map(customer => (
-              <div key={customer} className="mb-6">
-                <div className="flex items-center gap-3 mb-3 pl-1">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">
+              <section key={customer}>
+                <div className="group-header pl-1">
+                  <div className="group-avatar">
                     {customer !== 'ไม่ระบุลูกค้า' ? customer.charAt(0).toUpperCase() : '?'}
                   </div>
-                  <h2 className="text-lg font-bold text-gray-800">{customer}</h2>
-                  <span className="text-xs font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                    {groups[customer].length} รายการ
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl font-bold tracking-tight text-slate-950">{customer}</h2>
+                    <p className="mt-1 text-sm text-slate-500">กลุ่มงานแจ้งซ่อมของลูกค้ารายนี้</p>
+                  </div>
+                  <span className="group-chip">
+                    {groups[customer].length} งาน
                   </span>
                 </div>
 
@@ -295,51 +362,62 @@ const Maintenance = () => {
                     const s = statusMap[item.status] || statusMap.pending;
                     const images = item.images || [];
                     return (
-                      <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:border-blue-300 transition-colors ml-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="font-semibold text-gray-900 text-sm">{item.requestCode}</span>
-                              <span className="text-gray-300">|</span>
-                              <span className="font-medium text-blue-600 text-sm">{item.mold?.moldCode || '-'}</span>
-                              <span className="text-xs text-gray-500">{typeMap[item.type] || item.type}</span>
+                      <div
+                        key={item.id}
+                        onClick={() => openUpdateModal(item)}
+                        className="record-card ml-3"
+                      >
+                        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="record-card-kickers">
+                              <span className="record-card-id">{item.requestCode}</span>
+                              <span className="record-card-divider"></span>
+                              <span className="text-sm font-bold tracking-tight text-slate-900">{item.mold?.moldCode || '-'}</span>
+                              <span className={`status-pill ${s.tone}`}>
+                                {s.label}
+                              </span>
                             </div>
-                            <p className="text-gray-700 text-sm">{item.description}</p>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-                              <span>ผู้รับผิดชอบ: {item.assignedTo ? `${item.assignedTo.firstName} ${item.assignedTo.lastName}` : '-'}</span>
-                              <span>วันที่แจ้ง: {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : new Date(item.createdAt).toLocaleDateString('th-TH')}</span>
-                              <span>วันขึ้นผลิต: {item.productionDate ? new Date(item.productionDate).toLocaleDateString('th-TH') : '-'}</span>
+
+                            <h3 className="record-card-title">{item.mold_name || item.moldName || item.mold?.name || '-'}</h3>
+                            <p className="record-card-description line-clamp-2">{item.description}</p>
+
+                            <div className="record-card-meta">
+                              <span><FiTool className="h-4 w-4" /> {typeMap[item.type] || item.type}</span>
+                              <span><FiUser className="h-4 w-4" /> {item.assignedTo ? `${item.assignedTo.firstName}` : 'ยังไม่มอบหมาย'}</span>
+                              <span><FiCalendar className="h-4 w-4" /> {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : '-'}</span>
                             </div>
-                            {/* Thumbnail images */}
+
                             {images.length > 0 && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <FiImage className="text-gray-400 h-3.5 w-3.5 flex-shrink-0" />
-                                {images.slice(0, 3).map((img, i) => (
+                              <div className="record-card-thumbs">
+                                {images.slice(0, 4).map((img, i) => (
                                   <img
                                     key={i}
                                     src={getImageUrl(img)}
                                     alt=""
-                                    className="w-10 h-10 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                    className="record-card-thumb"
                                     onClick={(e) => { e.stopPropagation(); setLightboxImg(getImageUrl(img)); }}
                                   />
                                 ))}
-                                {images.length > 3 && (
-                                  <span className="text-xs text-gray-400">+{images.length - 3} รูป</span>
+                                {images.length > 4 && (
+                                  <div className="record-card-more">
+                                    +{images.length - 4}
+                                  </div>
                                 )}
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <button onClick={() => openUpdateModal(item)} className={`text-xs font-medium px-3 py-1.5 rounded-full ${s.color} hover:ring-2 hover:ring-blue-300 cursor-pointer transition-all`} title="คลิกเพื่ออัปเดตสถานะ">
-                              {s.label}
-                            </button>
+
+                          <div className="flex items-center justify-end">
+                            <div className="record-card-cta">
+                              <FiArrowLeft className="h-5 w-5 rotate-180" />
+                            </div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </section>
             ));
           })()}
         </div>
@@ -457,27 +535,69 @@ const Maintenance = () => {
       </Modal>
 
       {/* ===== Update / Detail Modal ===== */}
-      <Modal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)} title="อัปเดตสถานะงานแจ้งซ่อม" size="md">
+      <Modal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)} title="แก้ไข / อัปเดตงานแจ้งซ่อม" size="md">
         {updatingItem && (
           <form onSubmit={handleUpdateSubmit} className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <p className="font-semibold text-gray-900">{updatingItem.requestCode}</p>
-              <p className="text-gray-600 mt-1">{updatingItem.mold?.moldCode} — {updatingItem.description?.substring(0, 60)}</p>
+            <div className="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-900">{updatingItem.requestCode}</p>
+                <p className="text-gray-600 mt-0.5">{updatingItem.mold?.moldCode} — {updatingItem.mold?.name}</p>
+              </div>
+              <FiEdit2 className="h-4 w-4 text-gray-400" />
+            </div>
+
+            {/* Editable fields */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
+              <textarea
+                value={updateForm.description}
+                onChange={(e) => setUpdateForm({ ...updateForm, description: e.target.value })}
+                rows="2"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
+                <select value={updateForm.type} onChange={(e) => setUpdateForm({ ...updateForm, type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="repair">ซ่อมแซม</option>
+                  <option value="pm">PM</option>
+                  <option value="inspection">ตรวจสอบ</option>
+                  <option value="cleaning">ทำความสะอาด</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">วันที่แจ้ง</label>
+                <input type="date" value={updateForm.reportDate} onChange={(e) => setUpdateForm({ ...updateForm, reportDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">วันขึ้นผลิต</label>
+                <input type="date" value={updateForm.productionDate} onChange={(e) => setUpdateForm({ ...updateForm, productionDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
 
             {/* Existing images */}
             {updatingItem.images && updatingItem.images.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพแนบ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพแนบ ({updatingItem.images.length} รูป)</label>
                 <div className="flex flex-wrap gap-2">
                   {updatingItem.images.map((img, i) => (
-                    <img
-                      key={i}
-                      src={getImageUrl(img)}
-                      alt=""
-                      className="w-20 h-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
-                      onClick={() => setLightboxImg(getImageUrl(img))}
-                    />
+                    <div key={i} className="relative group">
+                      <img
+                        src={getImageUrl(img)}
+                        alt=""
+                        className="w-20 h-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+                        onClick={() => setLightboxImg(getImageUrl(img))}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteImage(img); }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600"
+                        title="ลบรูปนี้"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -503,10 +623,10 @@ const Maintenance = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { key: 'pending', label: 'รอดำเนินการ', color: 'border-gray-300 text-gray-600', active: 'bg-gray-100 border-gray-500 ring-2 ring-gray-300' },
-                  { key: 'in_progress', label: 'กำลังซ่อม', color: 'border-orange-300 text-orange-600', active: 'bg-orange-50 border-orange-500 ring-2 ring-orange-300' },
-                  { key: 'completed', label: 'เสร็จสิ้น', color: 'border-green-300 text-green-600', active: 'bg-green-50 border-green-500 ring-2 ring-green-300' },
-                  { key: 'cancelled', label: 'ยกเลิก', color: 'border-red-300 text-red-600', active: 'bg-red-50 border-red-500 ring-2 ring-red-300' },
+                  { key: 'pending', label: 'รอดำเนินการ', color: 'border-amber-300 text-amber-600', active: 'bg-amber-50 border-amber-500 ring-2 ring-amber-300' },
+                  { key: 'in_progress', label: 'กำลังซ่อม', color: 'border-blue-300 text-blue-600', active: 'bg-blue-50 border-blue-500 ring-2 ring-blue-300' },
+                  { key: 'completed', label: 'เสร็จสิ้น', color: 'border-emerald-300 text-emerald-600', active: 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300' },
+                  { key: 'cancelled', label: 'ยกเลิก', color: 'border-gray-300 text-gray-500', active: 'bg-gray-100 border-gray-500 ring-2 ring-gray-300' },
                 ].map(s => (
                   <button
                     key={s.key} type="button"
@@ -525,9 +645,20 @@ const Maintenance = () => {
                 {userOptions.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>)}
               </select>
             </div>
-            <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">
-              <button type="button" onClick={() => setShowUpdateModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
-              <button type="submit" disabled={updating} className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">{updating ? 'กำลังบันทึก...' : 'อัปเดต'}</button>
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={handleCloseRequest}
+                disabled={closing || updatingItem.status === 'cancelled'}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <FiX className="mr-1.5 h-4 w-4" />
+                {closing ? 'กำลังปิดงาน...' : 'ปิดงาน'}
+              </button>
+              <div className="flex space-x-3">
+                <button type="button" onClick={() => setShowUpdateModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+                <button type="submit" disabled={updating} className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">{updating ? 'กำลังบันทึก...' : 'บันทึก'}</button>
+              </div>
             </div>
           </form>
         )}

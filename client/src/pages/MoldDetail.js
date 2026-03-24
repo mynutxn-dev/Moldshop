@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FiArrowLeft, FiEdit2, FiTool, FiCalendar, FiBox } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiTool, FiBox } from 'react-icons/fi';
 import { moldsAPI } from '../services/api';
 
 const statusLabels = {
@@ -40,14 +40,14 @@ const MoldDetail = () => {
     <div>
       {/* Header */}
       <div className="flex items-center space-x-3 mb-6">
-        <Link to="/molds" className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg">
+        <Link to="/molds" className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-xl transition-all">
           <FiArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{mold.moldCode} — {mold.name}</h1>
-          <p className="text-gray-500">ลูกค้า: {mold.customer} | Part: {mold.partNumber || '-'}</p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">{mold.moldCode} — {mold.name}</h1>
+          <p className="text-gray-400 font-medium italic">ลูกค้า: {mold.customer} | Part: {mold.partNumber || '-'}</p>
         </div>
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+        <button className="inline-flex items-center px-6 py-3 bg-black text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-black/20 transform hover:-translate-y-1">
           <FiEdit2 className="mr-2 h-4 w-4" /> แก้ไข
         </button>
       </div>
@@ -56,9 +56,9 @@ const MoldDetail = () => {
         {/* Left - Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Specs */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-              <FiBox className="mr-2 h-5 w-5 text-blue-600" /> ข้อมูลแม่พิมพ์
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 card-hover">
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center uppercase text-xs tracking-widest">
+              <FiBox className="mr-2 h-4 w-4 text-black" /> ข้อมูลแม่พิมพ์
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
@@ -81,10 +81,10 @@ const MoldDetail = () => {
               <span className="text-2xl font-bold text-gray-900">{(mold.shotCount || 0).toLocaleString()}</span>
               <span className="text-sm text-gray-500">/ {(mold.maxShot || 0).toLocaleString()} shots</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-100 rounded-full h-4 p-1 overflow-hidden border border-gray-100">
               <div
-                className={`h-3 rounded-full ${shotPercent > 80 ? 'bg-red-500' : shotPercent > 50 ? 'bg-orange-500' : 'bg-green-500'}`}
-                style={{ width: `${shotPercent}%` }}
+                className="h-full rounded-full bg-black transition-all duration-1000"
+                style={{ width: `${shotPercent}%`, opacity: shotPercent > 80 ? 1 : shotPercent > 50 ? 0.7 : 0.4 }}
               ></div>
             </div>
             <p className="text-xs text-gray-500 mt-1">ใช้ไปแล้ว {shotPercent}% ของอายุการใช้งาน</p>
@@ -116,53 +116,35 @@ const MoldDetail = () => {
         {/* Right - Sidebar */}
         <div className="space-y-6">
           {/* Maintenance Info */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-              <FiTool className="mr-2 h-5 w-5 text-orange-600" /> การบำรุงรักษา
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 card-hover">
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center uppercase text-xs tracking-widest">
+              <FiTool className="mr-2 h-4 w-4 text-black" /> การบำรุงรักษา
             </h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500">บำรุงรักษาล่าสุด</p>
-                <p className="font-medium text-gray-900 text-sm">{mold.lastMaintenanceDate || '-'}</p>
+            <div className="space-y-4">
+              <div className="border-b border-gray-50 pb-2">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">บำรุงรักษาล่าสุด</p>
+                <p className="font-black text-gray-900 text-sm mt-1">{mold.lastMaintenanceDate || '-'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">บำรุงรักษาครั้งถัดไป</p>
-                <p className="font-medium text-orange-600 text-sm">{mold.nextMaintenanceDate || '-'}</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">บำรุงรักษาครั้งถัดไป</p>
+                <p className="font-black text-black text-base mt-1 underline decoration-2 underline-offset-4">{mold.nextMaintenanceDate || '-'}</p>
               </div>
             </div>
-            <button className="w-full mt-4 py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors">
+            <button className="w-full mt-6 py-3 text-sm font-bold text-white bg-black rounded-xl hover:bg-gray-800 transition-all shadow-md">
               แจ้งงานแจ้งซ่อม
             </button>
           </div>
 
-          {/* Dates */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-              <FiCalendar className="mr-2 h-5 w-5 text-green-600" /> วันที่สำคัญ
-            </h3>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 card-hover">
+            <h3 className="font-bold text-gray-900 mb-4">ดำเนินการ</h3>
             <div className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-500">วันที่สร้าง</p>
-                <p className="font-medium text-gray-900 text-sm">{mold.createdAt ? new Date(mold.createdAt).toLocaleDateString('th-TH') : '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">อัปเดตล่าสุด</p>
-                <p className="font-medium text-gray-900 text-sm">{mold.updatedAt ? new Date(mold.updatedAt).toLocaleDateString('th-TH') : '-'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">ดำเนินการ</h3>
-            <div className="space-y-2">
-              <button className="w-full py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50">
+              <button className="w-full py-3 text-sm font-bold text-black border-2 border-black rounded-xl hover:bg-black hover:text-white transition-all">
                 เบิกใช้งาน
               </button>
-              <button className="w-full py-2 text-sm font-medium text-green-600 border border-green-300 rounded-lg hover:bg-green-50">
+              <button className="w-full py-3 text-sm font-bold text-gray-600 border-2 border-gray-200 rounded-xl hover:border-black hover:text-black transition-all">
                 คืนแม่พิมพ์
               </button>
-              <button className="w-full py-2 text-sm font-medium text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50">
+              <button className="w-full py-3 text-sm font-bold text-white bg-gray-800 rounded-xl hover:bg-black transition-all">
                 สร้าง New Model
               </button>
             </div>

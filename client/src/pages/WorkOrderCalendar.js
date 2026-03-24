@@ -173,7 +173,7 @@ const WorkOrderCalendar = () => {
                                 <div className="p-12 text-center text-gray-400 text-sm">ไม่มีงานNew model ในเดือนนี้</div>
                             ) : (
                                 visibleItems.map(wo => {
-                                    const { startDay, endDay, totalDays } = getBarPosition(wo);
+                                    const { startDay, totalDays } = getBarPosition(wo);
                                     const stage = stageMap[wo.status] || stageMap['mold_design'];
                                     const border = priorityBorder[wo.priority] || '#3b82f6';
                                     const moldLabel = wo.mold?.moldCode || '—';

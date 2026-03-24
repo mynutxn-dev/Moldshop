@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiUserCheck, FiUserX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiEdit2, FiUserCheck, FiUserX } from 'react-icons/fi';
 import { usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -8,11 +8,11 @@ import { SkeletonTable } from '../components/Skeleton';
 import { useNavigate } from 'react-router-dom';
 
 const roleMap = {
-    admin: { label: 'ผู้ดูแลระบบ', color: 'text-purple-600 bg-purple-50' },
-    manager: { label: 'ผู้จัดการ', color: 'text-blue-600 bg-blue-50' },
-    technician: { label: 'ช่างเทคนิค', color: 'text-orange-600 bg-orange-50' },
-    operator: { label: 'พนักงานคุมเครื่อง', color: 'text-green-600 bg-green-50' },
-    viewer: { label: 'ผู้เยี่ยมชม', color: 'text-gray-600 bg-gray-50' },
+    admin: { label: 'ผู้ดูแลระบบ', tone: 'role-pill-admin' },
+    manager: { label: 'ผู้จัดการ', tone: 'role-pill-manager' },
+    technician: { label: 'ช่างเทคนิค', tone: 'role-pill-technician' },
+    operator: { label: 'พนักงานคุมเครื่อง', tone: 'role-pill-operator' },
+    viewer: { label: 'ผู้เยี่ยมชม', tone: 'role-pill-viewer' },
 };
 
 const Users = () => {
@@ -167,79 +167,107 @@ const Users = () => {
         (u.username?.toLowerCase().includes(search.toLowerCase())) ||
         (u.employeeId?.toLowerCase().includes(search.toLowerCase()))
     );
+    const activeCount = users.filter((user) => user.isActive).length;
+    const inactiveCount = users.length - activeCount;
+    const adminCount = users.filter((user) => user.role === 'admin').length;
 
     return (
-        <div>
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน</h1>
-                    <p className="text-gray-500 mt-1">รายชื่อพนักงานและสิทธิ์การใช้งานระบบ</p>
+        <div className="space-y-6">
+            <section className="page-hero animate-fade-in-up">
+                <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                        <p className="page-kicker">Access Management</p>
+                        <h1 className="page-title">จัดการผู้ใช้งานและสิทธิ์เข้าถึงให้ทีมทำงานได้ชัดเจนขึ้น</h1>
+                        <p className="page-subtitle">
+                            ดูรายชื่อพนักงาน บทบาท และสถานะการใช้งานจากพื้นที่เดียว พร้อมเพิ่มผู้ใช้ใหม่ แก้ไขข้อมูล หรือเปิด-ปิดสิทธิ์ได้อย่างรวดเร็ว
+                        </p>
+                    </div>
+                    <div className="page-actions">
+                        <button onClick={() => setShowAddModal(true)} className="btn-primary">
+                            <FiPlus className="h-4 w-4" /> เพิ่มผู้ใช้
+                        </button>
+                    </div>
                 </div>
-                <button onClick={() => setShowAddModal(true)} className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                    <FiPlus className="mr-2 h-4 w-4" /> เพิ่มผู้ใช้
-                </button>
-            </div>
+                <div className="overview-strip">
+                    <div className="overview-card overview-card--primary">
+                        <span className="overview-card-label">ผู้ใช้ทั้งหมด</span>
+                        <strong className="overview-card-value">{users.length}</strong>
+                        <span className="overview-card-meta">บัญชีในระบบ</span>
+                    </div>
+                    <div className="overview-card overview-card--success">
+                        <span className="overview-card-label">ใช้งานอยู่</span>
+                        <strong className="overview-card-value">{activeCount}</strong>
+                        <span className="overview-card-meta">พร้อมเข้าสู่ระบบ</span>
+                    </div>
+                    <div className="overview-card overview-card--danger">
+                        <span className="overview-card-label">ระงับ</span>
+                        <strong className="overview-card-value">{inactiveCount}</strong>
+                        <span className="overview-card-meta">ต้องตรวจสอบสิทธิ์</span>
+                    </div>
+                    <div className="overview-card overview-card--neutral">
+                        <span className="overview-card-label">ผู้ดูแลระบบ</span>
+                        <strong className="overview-card-value">{adminCount}</strong>
+                        <span className="overview-card-meta">บัญชีที่มีสิทธิ์สูงสุด</span>
+                    </div>
+                </div>
+            </section>
 
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-                <div className="relative w-full md:w-1/2">
-                    <FiSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <div className="filter-surface">
+                <div className="search-field w-full md:w-1/2">
+                    <FiSearch className="h-4 w-4" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="ค้นหาจาก ชื่อ, นามสกุล, username, รหัสพนักงาน..."
-                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                 </div>
             </div>
 
-            {/* Table */}
             {loading ? <SkeletonTable rows={5} cols={6} /> : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="table-shell">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="text-sm">
                             <thead>
-                                <tr className="bg-gray-50 border-b border-gray-200">
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-600">รหัสพนักงาน</th>
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-600">ชื่อ-นามสกุล</th>
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Username</th>
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-600">แผนก</th>
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-600">ระดับสิทธิ์</th>
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-600">สถานะ</th>
-                                    <th className="text-right px-4 py-3 font-semibold text-gray-600">จัดการ</th>
+                                <tr>
+                                    <th className="text-left">รหัสพนักงาน</th>
+                                    <th className="text-left">ชื่อ-นามสกุล</th>
+                                    <th className="text-left">Username</th>
+                                    <th className="text-left">แผนก</th>
+                                    <th className="text-left">ระดับสิทธิ์</th>
+                                    <th className="text-left">สถานะ</th>
+                                    <th className="text-right">จัดการ</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody>
                                 {filtered.map((u) => (
-                                    <tr key={u.id} className={`hover:bg-gray-50 transition-colors ${!u.isActive ? 'opacity-50 grayscale' : ''}`}>
-                                        <td className="px-4 py-3 font-medium text-gray-900">{u.employeeId}</td>
-                                        <td className="px-4 py-3 text-gray-900">{u.firstName} {u.lastName}</td>
-                                        <td className="px-4 py-3 text-gray-600">{u.username}</td>
-                                        <td className="px-4 py-3 text-gray-600">{u.department}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${(roleMap[u.role] || roleMap.viewer).color}`}>
+                                    <tr key={u.id} className={!u.isActive ? 'opacity-60' : ''}>
+                                        <td className="table-code">{u.employeeId}</td>
+                                        <td className="text-slate-900">{u.firstName} {u.lastName}</td>
+                                        <td>{u.username}</td>
+                                        <td>{u.department || '-'}</td>
+                                        <td>
+                                            <span className={`role-pill ${(roleMap[u.role] || roleMap.viewer).tone}`}>
                                                 {(roleMap[u.role] || roleMap.viewer).label}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td>
                                             {u.isActive ? (
-                                                <span className="inline-flex items-center text-xs font-medium text-green-600">
-                                                    <FiUserCheck className="mr-1" /> ใช้งาน
+                                                <span className="user-state user-state-active">
+                                                    <FiUserCheck className="h-4 w-4" /> ใช้งาน
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center text-xs font-medium text-red-600">
-                                                    <FiUserX className="mr-1" /> ระงับ
+                                                <span className="user-state user-state-inactive">
+                                                    <FiUserX className="h-4 w-4" /> ระงับ
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center justify-end space-x-1">
-                                                <button onClick={() => openEditModal(u)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50" title="แก้ไข">
+                                        <td>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <button onClick={() => openEditModal(u)} className="action-icon-button" title="แก้ไข">
                                                     <FiEdit2 className="h-4 w-4" />
                                                 </button>
-                                                <button onClick={() => confirmToggleActive(u)} className={`p-1.5 rounded ${u.isActive ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`} title={u.isActive ? 'ระงับการใช้งาน' : 'เปิดการใช้งาน'}>
+                                                <button onClick={() => confirmToggleActive(u)} className={`action-icon-button ${u.isActive ? 'is-danger' : 'is-success'}`} title={u.isActive ? 'ระงับการใช้งาน' : 'เปิดการใช้งาน'}>
                                                     {u.isActive ? <FiUserX className="h-4 w-4" /> : <FiUserCheck className="h-4 w-4" />}
                                                 </button>
                                             </div>
@@ -248,7 +276,7 @@ const Users = () => {
                                 ))}
                                 {filtered.length === 0 && (
                                     <tr>
-                                        <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                                        <td colSpan="7" className="px-4 py-10 text-center text-slate-500">
                                             ไม่พบข้อมูลผู้ใช้งาน
                                         </td>
                                     </tr>
@@ -256,8 +284,7 @@ const Users = () => {
                             </tbody>
                         </table>
                     </div>
-                    {/* Footer */}
-                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
+                    <div className="table-footer-note">
                         แสดง {filtered.length} จาก {users.length} รายการ
                     </div>
                 </div>

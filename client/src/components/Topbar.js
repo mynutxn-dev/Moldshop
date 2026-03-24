@@ -1,49 +1,115 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiMenu, FiBell, FiLogOut, FiUser, FiMoon, FiSun } from 'react-icons/fi';
+import { useLocation } from 'react-router-dom';
+import { FiMenu, FiBell, FiLogOut, FiUser, FiMoon, FiSun, FiHome } from 'react-icons/fi';
 import { useTheme } from '../contexts/ThemeContext';
 
+const pageMeta = [
+  {
+    match: (pathname) => pathname === '/',
+    label: 'Dashboard',
+    title: 'ภาพรวมการทำงานของแม่พิมพ์',
+    subtitle: 'ติดตามสถานะงานซ่อม New Model และ inventory จากมุมมองเดียว'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/molds'),
+    label: 'Molds',
+    title: 'จัดการแม่พิมพ์และสถานะการใช้งาน',
+    subtitle: 'เข้าถึงข้อมูลแม่พิมพ์แต่ละชุดได้รวดเร็วและเป็นระบบ'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/maintenance'),
+    label: 'Maintenance',
+    title: 'บริหารคิวงานแจ้งซ่อม',
+    subtitle: 'ลดงานตกหล่นด้วยมุมมองที่ชัดเจนและอ่านง่ายขึ้น'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/work-orders'),
+    label: 'New Model',
+    title: 'ติดตามงาน New Model แบบ end-to-end',
+    subtitle: 'เห็นลำดับงานและสถานะสำคัญได้จากพื้นที่เดียว'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/inventory'),
+    label: 'Inventory',
+    title: 'มุมมองสต๊อคที่ชัดและพร้อมใช้งาน',
+    subtitle: 'ตรวจสอบจำนวนและความพร้อมของอุปกรณ์ประกอบได้รวดเร็ว'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/reports'),
+    label: 'Reports',
+    title: 'รายงานและข้อมูลสรุปเชิงปฏิบัติการ',
+    subtitle: 'อ่านภาพรวมเชิงธุรกิจได้เร็วขึ้นจากแดชบอร์ดเดียว'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/users'),
+    label: 'Users',
+    title: 'จัดการผู้ใช้งานและสิทธิ์เข้าถึง',
+    subtitle: 'ดูแลทีมงานในระบบได้ใน flow ที่เรียบง่ายขึ้น'
+  },
+  {
+    match: (pathname) => pathname.startsWith('/data-transfer'),
+    label: 'Transfer',
+    title: 'โอนย้ายข้อมูลอย่างมั่นใจ',
+    subtitle: 'รวม action สำคัญไว้ในพื้นที่ทำงานที่เข้าใจง่าย'
+  }
+];
+
 const Topbar = ({ onMenuClick }) => {
-  const navigate = useNavigate();
+  const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const { dark, toggle } = useTheme();
+  const currentPage = pageMeta.find((item) => item.match(location.pathname)) || pageMeta[0];
+  const roleLabel = user.role === 'admin' ? 'Administrator' : 'Production Team';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/login');
+    // Redirect to Hub instead of internal login
+    window.location.href = 'http://localhost:3000';
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
+    <header className="topbar-surface flex items-center justify-between gap-4 px-4 py-3 md:px-6">
       {/* Left */}
-      <div className="flex items-center space-x-4">
+      <div className="flex min-w-0 items-center gap-3 md:gap-4">
         <button
           onClick={onMenuClick}
-          className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+          className="topbar-action md:hidden"
         >
           <FiMenu className="h-5 w-5" />
         </button>
-        <h2 className="text-lg font-semibold text-gray-800 hidden sm:block">
-          Moldshop Management System
-        </h2>
+        <div className="topbar-context min-w-0">
+          <span className="topbar-context-label">{currentPage.label}</span>
+          <div className="flex min-w-0 items-center gap-3">
+            <h2 className="topbar-context-title truncate">{currentPage.title}</h2>
+            <span className="topbar-chip hidden xl:inline-flex">{roleLabel}</span>
+          </div>
+          <p className="topbar-context-subtitle hidden lg:block">{currentPage.subtitle}</p>
+        </div>
       </div>
 
       {/* Right */}
-      <div className="flex items-center space-x-3">
-        <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <a
+          href="http://localhost:3000/dashboard"
+          className="portal-link hidden sm:inline-flex"
+          title="กลับหน้า Portal"
+        >
+          <FiHome className="h-4 w-4" />
+          <span>Hub</span>
+        </a>
+        <div className="user-pill hidden xl:flex">
           <FiUser className="h-4 w-4" />
-          <span>{user.firstName || 'ผู้ใช้'} {user.lastName || ''}</span>
-          <span className="text-xs text-gray-400">({user.role || '-'})</span>
+          <span>{user.firstName || 'ผู้ใช้'}</span>
         </div>
-        <button onClick={toggle} className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg btn-press" title={dark ? 'สลับเป็น Light Mode' : 'สลับเป็น Dark Mode'}>
-          {dark ? <FiSun className="h-5 w-5 text-yellow-500" /> : <FiMoon className="h-5 w-5" />}
+        <button onClick={toggle} className="topbar-action btn-press" title={dark ? 'สลับเป็น Light Mode' : 'สลับเป็น Dark Mode'}>
+          {dark ? <FiSun className="h-5 w-5 text-amber-500" /> : <FiMoon className="h-5 w-5" />}
         </button>
-        <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+        <button className="topbar-action relative">
           <FiBell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
         </button>
-        <button onClick={handleLogout} className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg" title="ออกจากระบบ">
+        <button onClick={handleLogout} className="topbar-action topbar-action-danger" title="ออกจากระบบ">
           <FiLogOut className="h-5 w-5" />
         </button>
       </div>

@@ -68,4 +68,71 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
+// POST /api/users/transfer-data - ย้าย ownership ข้อมูลงานจาก user เก่า → user ใหม่
+router.post('/transfer-data', auth, adminOnly, async (req, res) => {
+  const { Mold, Maintenance, WorkOrder } = require('../models');
+  const transaction = await require('../config/database').sequelize.transaction();
+  
+  try {
+    const { fromUserId, toUserId } = req.body;
+    
+    if (!fromUserId || !toUserId) {
+      return res.status(400).json({ message: 'ต้องระบุ fromUserId และ toUserId' });
+    }
+    
+    // ตรวจสอบว่า user ทั้งสองมีอยู่จริง
+    const fromUser = await User.findByPk(fromUserId);
+    const toUser = await User.findByPk(toUserId);
+    
+    if (!fromUser || !toUser) {
+      return res.status(404).json({ message: 'ไม่พบผู้ใช้' });
+    }
+    
+    // อัปเดต Molds (createdBy, updatedBy)
+    const moldResult = await Mold.update(
+      { createdBy: toUserId, updatedBy: toUserId },
+      { where: { createdBy: fromUserId }, transaction }
+    );
+    
+    // อัปเดต Maintenance (createdBy, assignedTo)
+    const mtCreated = await Maintenance.update(
+      { createdBy: toUserId },
+      { where: { createdBy: fromUserId }, transaction }
+    );
+    const mtAssigned = await Maintenance.update(
+      { assignedTo: toUserId },
+      { where: { assignedTo: fromUserId }, transaction }
+    );
+    
+    // อัปเดต WorkOrders (createdBy, assignedTo)
+    const woCreated = await WorkOrder.update(
+      { createdBy: toUserId },
+      { where: { createdBy: fromUserId }, transaction }
+    );
+    const woAssigned = await WorkOrder.update(
+      { assignedTo: toUserId },
+      { where: { assignedTo: fromUserId }, transaction }
+    );
+    
+    await transaction.commit();
+    
+    res.json({
+      message: 'ย้ายข้อมูลสำเร็จ',
+      transferred: {
+        molds: moldResult[0],
+        maintenanceCreated: mtCreated[0],
+        maintenanceAssigned: mtAssigned[0],
+        workOrdersCreated: woCreated[0],
+        workOrdersAssigned: woAssigned[0],
+      },
+      fromUser: fromUser.username,
+      toUser: toUser.username,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Transfer data error:', error);
+    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการย้ายข้อมูล', error: error.message });
+  }
+});
+
 module.exports = router;

@@ -6,22 +6,22 @@ import { SkeletonDashboard } from '../components/Skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const statusMap = {
-  pending: { label: 'รอดำเนินการ', color: 'text-gray-600 bg-gray-100' },
-  in_progress: { label: 'กำลังดำเนินการ', color: 'text-orange-600 bg-orange-50' },
-  completed: { label: 'เสร็จสิ้น', color: 'text-green-600 bg-green-50' },
-  cancelled: { label: 'ยกเลิก', color: 'text-red-600 bg-red-50' },
+  pending: { label: 'รอดำเนินการ', tone: 'status-pill-pending' },
+  in_progress: { label: 'กำลังดำเนินการ', tone: 'status-pill-progress' },
+  completed: { label: 'เสร็จสิ้น', tone: 'status-pill-completed' },
+  cancelled: { label: 'ยกเลิก', tone: 'status-pill-cancelled' },
 };
 
-const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 card-hover animate-fade-in-up">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm text-gray-500 font-medium">{title}</p>
-        <p className="text-3xl font-bold text-gray-900 mt-1 animate-count-up">{value}</p>
-        {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
+const StatCard = ({ title, value, icon: Icon, tone = 'primary', subtitle }) => (
+  <div className={`metric-card metric-card--${tone} animate-fade-in-up`}>
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">{title}</p>
+        <p className="mt-2 text-4xl font-bold tracking-tight text-slate-950">{value}</p>
+        {subtitle && <p className="mt-2 text-sm font-medium text-slate-500">{subtitle}</p>}
       </div>
-      <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center shadow-lg`}>
-        <Icon className="h-6 w-6 text-white" />
+      <div className="metric-card-icon">
+        <Icon className="h-6 w-6" />
       </div>
     </div>
   </div>
@@ -57,143 +57,218 @@ const Dashboard = () => {
   const m = stats?.molds || {};
   const mt = stats?.maintenance || {};
   const wo = stats?.workOrders || {};
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const totalPending = (mt.pending || 0) + (wo.pending || 0);
+  const pieData = [
+    { name: 'พร้อมใช้งาน', value: m.active || 0, color: '#2563eb' },
+    { name: 'ใช้งานอยู่', value: m.inUse || 0, color: '#0f172a' },
+    { name: 'กำลังซ่อม', value: m.maintenance || 0, color: '#14b8a6' },
+    { name: 'ชำรุด', value: m.damaged || 0, color: '#f59e0b' },
+  ].filter((item) => item.value > 0);
+  const todayLabel = new Date().toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">ภาพรวมระบบจัดการแม่พิมพ์</p>
+    <div className="space-y-6">
+      <div className="dashboard-hero animate-fade-in-up">
+        <div className="dashboard-hero-grid">
+          <div>
+            <span className="hero-badge">Moldshop Command Center</span>
+            <h1 className="hero-title">ติดตามวงจรแม่พิมพ์ งานซ่อม และ New Model จากมุมมองเดียว</h1>
+            <p className="hero-subtitle">
+              สวัสดี {user.firstName || 'ทีมงาน'} • วันนี้ {todayLabel} คุณสามารถเห็นแม่พิมพ์ที่พร้อมใช้งาน งานที่กำลังรอ และรายการที่ต้องตัดสินใจได้ทันที
+            </p>
+            <div className="hero-action-row">
+              <Link to="/maintenance" className="btn-primary">เปิดงานแจ้งซ่อม</Link>
+              <Link to="/work-orders" className="hero-button-secondary">ดู New Model</Link>
+            </div>
+          </div>
+          <div className="hero-metrics">
+            <div className="hero-metric">
+              <div className="hero-metric-top">
+                <span>แม่พิมพ์พร้อมใช้งาน</span>
+                <FiCheckCircle className="h-5 w-5" />
+              </div>
+              <strong>{m.active || 0}</strong>
+              <p>จากทั้งหมด {m.total || 0} ชุดในระบบ</p>
+            </div>
+            <div className="hero-metric">
+              <div className="hero-metric-top">
+                <span>งานที่รอดำเนินการ</span>
+                <FiClock className="h-5 w-5" />
+              </div>
+              <strong>{totalPending}</strong>
+              <p>รวมงานแจ้งซ่อมและ New Model ที่ยังไม่ปิด</p>
+            </div>
+            <div className="hero-metric">
+              <div className="hero-metric-top">
+                <span>แม่พิมพ์ที่ต้องติดตาม</span>
+                <FiAlertTriangle className="h-5 w-5" />
+              </div>
+              <strong>{(m.maintenance || 0) + (m.damaged || 0)}</strong>
+              <p>กำลังซ่อม {m.maintenance || 0} • ชำรุด {m.damaged || 0}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger-children">
-        <StatCard title="แม่พิมพ์ทั้งหมด" value={m.total || 0} icon={FiBox} color="gradient-blue" subtitle={`พร้อมใช้งาน ${m.active || 0} ชุด`} />
-        <StatCard title="รองานแจ้งซ่อม" value={mt.total || 0} icon={FiTool} color="gradient-orange" subtitle={`รอดำเนินการ ${mt.pending || 0} รายการ`} />
-        <StatCard title="New Model" value={wo.total || 0} icon={FiClipboard} color="gradient-green" subtitle={`กำลังดำเนินการ ${wo.inProgress || 0}`} />
-        <StatCard title="แม่พิมพ์ชำรุด" value={m.damaged || 0} icon={FiAlertTriangle} color="gradient-red" subtitle="ต้องดำเนินการ" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="แม่พิมพ์ทั้งหมด" value={m.total || 0} icon={FiBox} tone="primary" subtitle={`พร้อมใช้งาน ${m.active || 0} ชุด`} />
+        <StatCard title="รองานแจ้งซ่อม" value={mt.total || 0} icon={FiTool} tone="warning" subtitle={`รอดำเนินการ ${mt.pending || 0} รายการ`} />
+        <StatCard title="New Model" value={wo.total || 0} icon={FiClipboard} tone="success" subtitle={`กำลังดำเนินการ ${wo.inProgress || 0}`} />
+        <StatCard title="แม่พิมพ์ชำรุด" value={m.damaged || 0} icon={FiAlertTriangle} tone="danger" subtitle="ต้องดำเนินการ" />
       </div>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Recent Maintenance */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">งานแจ้งซ่อมล่าสุด</h3>
-            <Link to="/maintenance" className="text-sm text-blue-600 hover:text-blue-700 flex items-center">
-              ดูทั้งหมด <FiArrowRight className="ml-1 h-4 w-4" />
+        <div className="panel-card">
+          <div className="panel-header">
+            <div>
+              <h3 className="text-base font-semibold text-slate-950">งานแจ้งซ่อมล่าสุด</h3>
+              <p className="mt-1 text-sm text-slate-500">เรียงจากรายการล่าสุดที่ทีมต้องติดตาม</p>
+            </div>
+            <Link to="/maintenance" className="panel-link">
+              ดูทั้งหมด <FiArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
-            {loadingMT ? <div className="p-4 text-sm text-gray-400">กำลังดึงข้อมูล...</div> : recentMT.map((item) => {
+          <div className="list-stack">
+            {loadingMT ? <div className="list-row"><p className="empty-copy">กำลังดึงข้อมูล...</p></div> : recentMT.map((item) => {
               const s = statusMap[item.status] || statusMap.pending;
               return (
-                <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{item.mold?.moldCode || item.requestCode}</p>
-                    <p className="text-xs text-gray-500">{item.description}</p>
-                    <div className="flex flex-wrap gap-x-2 mt-1 text-[10px] text-gray-400">
+                <div key={item.id} className="list-row">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-950">{item.mold?.moldCode || item.requestCode}</p>
+                    <p className="mt-1 text-sm text-slate-500">{item.description}</p>
+                    <div className="list-meta">
                       <span>แจ้ง: {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : new Date(item.createdAt).toLocaleDateString('th-TH')}</span>
                       <span>ผลิต: {item.productionDate ? new Date(item.productionDate).toLocaleDateString('th-TH') : '-'}</span>
                     </div>
                   </div>
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.color}`}>{s.label}</span>
+                  <span className={`status-pill ${s.tone}`}>{s.label}</span>
                 </div>
               );
             })}
-            {!loadingMT && recentMT.length === 0 && <p className="p-4 text-sm text-gray-400">ไม่มีรายการ</p>}
+            {!loadingMT && recentMT.length === 0 && <div className="list-row"><p className="empty-copy">ไม่มีรายการงานแจ้งซ่อมล่าสุด</p></div>}
           </div>
         </div>
 
         {/* Recent Work Orders */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">New Model ล่าสุด</h3>
-            <Link to="/work-orders" className="text-sm text-blue-600 hover:text-blue-700 flex items-center">
-              ดูทั้งหมด <FiArrowRight className="ml-1 h-4 w-4" />
+        <div className="panel-card">
+          <div className="panel-header">
+            <div>
+              <h3 className="text-base font-semibold text-slate-950">New Model ล่าสุด</h3>
+              <p className="mt-1 text-sm text-slate-500">ติดตามลำดับงานที่กำลังขยับอยู่ในระบบ</p>
+            </div>
+            <Link to="/work-orders" className="panel-link">
+              ดูทั้งหมด <FiArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
-            {loadingWO ? <div className="p-4 text-sm text-gray-400">กำลังดึงข้อมูล...</div> : recentWO.map((item) => {
+          <div className="list-stack">
+            {loadingWO ? <div className="list-row"><p className="empty-copy">กำลังดึงข้อมูล...</p></div> : recentWO.map((item) => {
               const s = statusMap[item.status] || statusMap.pending;
               return (
-                <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{item.orderCode}</p>
-                    <p className="text-xs text-gray-500">{item.title} {item.assignedTo ? `— ${item.assignedTo.firstName}` : ''}</p>
+                <div key={item.id} className="list-row">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-950">{item.orderCode}</p>
+                    <p className="mt-1 text-sm text-slate-500">{item.title} {item.assignedTo ? `— ${item.assignedTo.firstName}` : ''}</p>
                   </div>
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.color}`}>{s.label}</span>
+                  <span className={`status-pill ${s.tone}`}>{s.label}</span>
                 </div>
               );
             })}
-            {!loadingWO && recentWO.length === 0 && <p className="p-4 text-sm text-gray-400">ไม่มีรายการ</p>}
+            {!loadingWO && recentWO.length === 0 && <div className="list-row"><p className="empty-copy">ไม่มีรายการ New Model ล่าสุด</p></div>}
           </div>
         </div>
       </div>
 
       {/* Charts Row */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in-up">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 animate-fade-in-up">
         {/* Mold Status Donut Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">สถานะแม่พิมพ์</h3>
-          <div className="flex items-center">
-            <div className="w-48 h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'พร้อมใช้งาน', value: m.active || 0 },
-                      { name: 'ใช้งานอยู่', value: m.inUse || 0 },
-                      { name: 'กำลังซ่อม', value: m.maintenance || 0 },
-                      { name: 'ชำรุด', value: m.damaged || 0 },
-                    ].filter(d => d.value > 0)}
-                    cx="50%" cy="50%" innerRadius={50} outerRadius={75}
-                    paddingAngle={3} dataKey="value"
-                  >
-                    {['#22c55e', '#3b82f6', '#f97316', '#ef4444'].map((c, i) => <Cell key={i} fill={c} />)}
-                  </Pie>
-                  <Tooltip formatter={(v) => `${v} ชุด`} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex-1 space-y-3 ml-4">
-              {[
-                { label: 'พร้อมใช้งาน', value: m.active || 0, color: 'bg-green-500' },
-                { label: 'ใช้งานอยู่', value: m.inUse || 0, color: 'bg-blue-500' },
-                { label: 'กำลังซ่อม', value: m.maintenance || 0, color: 'bg-orange-500' },
-                { label: 'ชำรุด', value: m.damaged || 0, color: 'bg-red-500' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                    <span className="text-sm text-gray-600">{item.label}</span>
-                  </div>
-                  <span className="font-bold text-gray-900">{item.value}</span>
+        <div className="panel-card p-5 md:p-6">
+          <div className="mb-5">
+            <h3 className="text-base font-semibold text-slate-950">สถานะแม่พิมพ์</h3>
+            <p className="mt-1 text-sm text-slate-500">ภาพรวมความพร้อมของแม่พิมพ์ในระบบ</p>
+          </div>
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-center">
+            <div className="mx-auto h-56 w-56 xl:mx-0">
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={84}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {pieData.map((item) => <Cell key={item.name} fill={item.color} stroke="none" />)}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => `${value} ชุด`}
+                      contentStyle={{
+                        borderRadius: '18px',
+                        border: '1px solid rgba(148, 163, 184, 0.24)',
+                        boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
+                  ไม่มีข้อมูลสถานะ
                 </div>
-              ))}
+              )}
+            </div>
+            <div className="flex-1 space-y-3">
+              {pieData.length > 0 ? pieData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }}></span>
+                    <span className="text-sm font-medium text-slate-600">{item.name}</span>
+                  </div>
+                  <span className="text-lg font-bold text-slate-950">{item.value}</span>
+                </div>
+              )) : <p className="empty-copy">ยังไม่มีข้อมูลแม่พิมพ์ให้สรุปในกราฟ</p>}
             </div>
           </div>
         </div>
 
         {/* Maintenance & Work Order Bar Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">สรุปงานตามสถานะ</h3>
+        <div className="panel-card p-5 md:p-6">
+          <div className="mb-5">
+            <h3 className="text-base font-semibold text-slate-950">สรุปงานตามสถานะ</h3>
+            <p className="mt-1 text-sm text-slate-500">เปรียบเทียบปริมาณงานแจ้งซ่อมและ New Model ในแต่ละสถานะ</p>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={[
               { name: 'รอ', maintenance: mt.pending || 0, workOrder: wo.pending || 0 },
               { name: 'กำลังทำ', maintenance: mt.inProgress || 0, workOrder: wo.inProgress || 0 },
               { name: 'เสร็จ', maintenance: mt.completed || 0, workOrder: wo.completed || 0 },
             ]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="maintenance" name="งานแจ้งซ่อม" fill="#f97316" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="workOrder" name="New Model" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.22)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: '18px',
+                  border: '1px solid rgba(148, 163, 184, 0.24)',
+                  boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)'
+                }}
+              />
+              <Bar dataKey="maintenance" name="งานแจ้งซ่อม" fill="#2563eb" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="workOrder" name="New Model" fill="#14b8a6" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-          <div className="flex items-center justify-center space-x-6 mt-2 text-xs">
-            <span className="flex items-center"><span className="w-3 h-3 rounded bg-orange-500 mr-1.5" />งานแจ้งซ่อม</span>
-            <span className="flex items-center"><span className="w-3 h-3 rounded bg-blue-500 mr-1.5" />New Model</span>
+          <div className="chart-legend mt-4">
+            <span><span className="chart-legend-dot" style={{ backgroundColor: '#2563eb' }}></span>งานแจ้งซ่อม</span>
+            <span><span className="chart-legend-dot" style={{ backgroundColor: '#14b8a6' }}></span>New Model</span>
           </div>
         </div>
       </div>

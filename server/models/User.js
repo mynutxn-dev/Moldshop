@@ -54,6 +54,12 @@ const User = sequelize.define('User', {
     defaultValue: true,
     field: 'is_active',
   },
+  hubUserId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    field: 'hub_user_id',
+  },
 }, {
   tableName: 'users',
   timestamps: true,

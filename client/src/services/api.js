@@ -59,6 +59,7 @@ export const maintenanceAPI = {
   uploadImages: (id, formData) => api.post(`/maintenance/${id}/images`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  deleteImage: (id, imageUrl) => api.delete(`/maintenance/${id}/images`, { data: { imageUrl } }),
 };
 
 // Work Orders
@@ -68,6 +69,10 @@ export const workOrdersAPI = {
   create: (data) => api.post('/work-orders', data),
   update: (id, data) => api.put(`/work-orders/${id}`, data),
   delete: (id) => api.delete(`/work-orders/${id}`),
+  uploadImages: (id, formData) => api.post(`/work-orders/${id}/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteImage: (id, imageUrl) => api.delete(`/work-orders/${id}/images`, { data: { imageUrl } }),
 };
 
 // Dashboard
@@ -84,6 +89,7 @@ export const usersAPI = {
   create: (data) => api.post('/users', data),
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
+  transferData: (fromUserId, toUserId) => api.post('/users/transfer-data', { fromUserId, toUserId }),
 };
 
 // Inventory
