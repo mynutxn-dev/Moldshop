@@ -34,8 +34,9 @@ router.post('/sso', async (req, res) => {
       return res.status(401).json({ message: 'Invalid SSO token', detail: validateData });
     }
 
-    const { hubUserId, hubEmail, hubUserMetadata } = validateData.user;
+    const { hubUserId, hubEmail, hubUserMetadata, requestedSystemRole } = validateData.user;
     const username = hubUserMetadata?.username || hubEmail.split('@')[0];
+    const incomingRole = requestedSystemRole || 'viewer';
 
     // 1) Find by hub_user_id (already linked)
     let user = await User.findOne({ where: { hubUserId } });
@@ -46,14 +47,21 @@ router.post('/sso', async (req, res) => {
       if (!user && hubEmail) {
         user = await User.findOne({ where: { email: hubEmail } });
       }
-      if (user) {
-        // Link existing user to Hub
-        await user.update({ hubUserId });
-        console.log('[SSO] Linked existing user:', user.username, '→ Hub:', hubUserId);
+    }
+
+    // 3) Sync data if user exists
+    if (user) {
+      const updates = {};
+      if (!user.hubUserId) updates.hubUserId = hubUserId;
+      if (user.role !== incomingRole) updates.role = incomingRole;
+      
+      if (Object.keys(updates).length > 0) {
+        await user.update(updates);
+        console.log('[SSO] Synced user:', user.username, updates);
       }
     }
 
-    // 3) Create new user only if truly not found
+    // 4) Create new user only if truly not found
     if (!user) {
       const fullName = hubUserMetadata?.full_name || username;
       const nameParts = fullName.split(' ');
@@ -70,12 +78,12 @@ router.post('/sso', async (req, res) => {
         firstName,
         lastName,
         email: hubEmail,
-        role: 'viewer',
+        role: incomingRole,
         department: 'Moldshop',
         isActive: true,
         hubUserId,
       });
-      console.log('[SSO] Created new user:', user.username);
+      console.log('[SSO] Created new user:', user.username, 'Role:', incomingRole);
     }
 
     // Generate Moldshop JWT
