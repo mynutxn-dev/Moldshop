@@ -55,6 +55,7 @@ const pageMeta = [
 ];
 
 const Topbar = ({ onMenuClick }) => {
+  const HUB_URL = process.env.REACT_APP_HUB_URL || 'https://polyfoampfs-hub.vercel.app';
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const { dark, toggle } = useTheme();
@@ -65,7 +66,7 @@ const Topbar = ({ onMenuClick }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     // Redirect to Hub instead of internal login
-    window.location.href = 'http://localhost:3000';
+    window.location.href = HUB_URL;
   };
 
   return (
@@ -91,7 +92,7 @@ const Topbar = ({ onMenuClick }) => {
       {/* Right */}
       <div className="flex items-center gap-2 sm:gap-3">
         <a
-          href="http://localhost:3000/dashboard"
+          href={`${HUB_URL}/dashboard`}
           className="portal-link hidden sm:inline-flex"
           title="กลับหน้า Portal"
         >
