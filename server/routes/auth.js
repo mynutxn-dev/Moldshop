@@ -5,7 +5,7 @@ const { auth } = require('../middleware/auth');
 const router = express.Router();
 
 // Hub SSO Configuration
-const HUB_VALIDATE_URL = process.env.HUB_VALIDATE_URL || 'http://localhost:3000/api/sso/validate';
+const HUB_VALIDATE_URL = process.env.HUB_VALIDATE_URL || 'https://polyfoampfs-hub.vercel.app/api/sso/validate';
 const SYSTEM_ID = 'moldshop';
 
 // POST /api/auth/sso - SSO login from Hub
