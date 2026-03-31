@@ -28,23 +28,18 @@ function AppLayout({ children }) {
   const [sidebarHovered, setSidebarHovered] = useState(false);
 
   return (
-    <div className="app-shell" style={{ '--sidebar-offset': sidebarHovered ? '17rem' : '5rem' }}>
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onHoverChange={setSidebarHovered}
-      />
-      <div className="shell-frame">
-        {/* Desktop: shift margin based on hover state */}
-        <div className="shell-content-area">
-          <Topbar onMenuClick={() => setSidebarOpen(true)} />
-          <main className="shell-main">
-            <div className="mx-auto w-full max-w-7xl">
-              {children}
-            </div>
-          </main>
-        </div>
+    <div className="app-container">
+      <div className={`sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onHoverChange={setSidebarHovered}
+        />
       </div>
+      <main className="main-content" onClick={() => setSidebarOpen(false)}>
+        <Topbar onMenuClick={(e) => { e.stopPropagation(); setSidebarOpen(true); }} isMenuOpen={sidebarOpen} />
+        {children}
+      </main>
     </div>
   );
 }

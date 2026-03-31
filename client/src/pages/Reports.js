@@ -95,162 +95,170 @@ const Reports = () => {
 
   if (loading) return <div className="flex items-center justify-center h-64"><p className="text-gray-500">กำลังโหลดข้อมูล...</p></div>;
 
+  if (loading) return <div className="flex items-center justify-center h-64"><p className="text-[var(--text-muted)]">กำลังโหลดข้อมูล...</p></div>;
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">รายงาน</h1>
-          <p className="text-gray-500 mt-1">สรุปข้อมูลสถิติและรายงานต่างๆ</p>
+          <h1 className="page-title">📊 รายงานระบบแม่พิมพ์</h1>
+          <p className="text-muted" style={{ marginTop: '0.5rem' }}>สรุปข้อมูลสถิติและรายงานต่างๆ ของ Moldshop</p>
         </div>
-        <button onClick={handleExport} className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
-          <FiDownload className="mr-2 h-4 w-4" /> Export Excel
-        </button>
+        <div className="page-header-actions flex gap-2">
+          <button onClick={handleExport} className="btn" style={{ background: 'var(--color-success)', color: 'white' }}>
+            <FiDownload className="mr-1 h-4 w-4 inline" /> Export Excel
+          </button>
+        </div>
       </div>
 
       {/* Report Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FiBarChart2 className="h-5 w-5 text-blue-600" />
+      {/* Report Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiBarChart2 size={20} />
             </div>
-            <h3 className="font-semibold text-gray-900">สรุปแม่พิมพ์</h3>
+            <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)' }}>สรุปแม่พิมพ์</h3>
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">ทั้งหมด</span>
-              <span className="font-semibold text-gray-900">{moldStats.total} ชุด</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>ทั้งหมด</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-color)' }}>{moldStats.total} ชุด</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">พร้อมใช้งาน</span>
-              <span className="font-semibold text-green-600">{moldStats.active} ชุด</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>พร้อมใช้งาน</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{moldStats.active} ชุด</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">กำลังซ่อม / ชำรุด</span>
-              <span className="font-semibold text-red-600">{moldStats.maintenance + moldStats.damaged} ชุด</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <FiPieChart className="h-5 w-5 text-orange-600" />
-            </div>
-            <h3 className="font-semibold text-gray-900">สรุปงานแจ้งซ่อม</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">ทั้งหมด</span>
-              <span className="font-semibold text-gray-900">{mtStats.total} รายการ</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">เสร็จสิ้น</span>
-              <span className="font-semibold text-green-600">{mtStats.completed} รายการ</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">ค้างดำเนินการ</span>
-              <span className="font-semibold text-orange-600">{mtStats.pending + mtStats.inProgress} รายการ</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>กำลังซ่อม / ชำรุด</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{moldStats.maintenance + moldStats.damaged} ชุด</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <FiTrendingUp className="h-5 w-5 text-green-600" />
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--bg-secondary)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiPieChart size={20} />
             </div>
-            <h3 className="font-semibold text-gray-900">สรุป New Model</h3>
+            <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)' }}>สรุปงานแจ้งซ่อม</h3>
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">ทั้งหมด</span>
-              <span className="font-semibold text-gray-900">{woStats.total} รายการ</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>ทั้งหมด</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-color)' }}>{mtStats.total} รายการ</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">เสร็จสิ้น</span>
-              <span className="font-semibold text-green-600">{woStats.completed} รายการ</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>เสร็จสิ้น</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{mtStats.completed} รายการ</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">กำลังดำเนินการ</span>
-              <span className="font-semibold text-blue-600">{woStats.inProgress} รายการ</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>ค้างดำเนินการ</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-warning)' }}>{mtStats.pending + mtStats.inProgress} รายการ</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--bg-secondary)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiTrendingUp size={20} />
+            </div>
+            <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)' }}>สรุป New Model</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>ทั้งหมด</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-color)' }}>{woStats.total} รายการ</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>เสร็จสิ้น</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{woStats.completed} รายการ</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>กำลังดำเนินการ</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{woStats.inProgress} รายการ</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mold Status Chart (placeholder) */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4">สถานะแม่พิมพ์ตามลูกค้า</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">ลูกค้า</th>
-                <th className="text-center px-4 py-3 font-semibold text-green-600">พร้อมใช้</th>
-                <th className="text-center px-4 py-3 font-semibold text-blue-600">ใช้งานอยู่</th>
-                <th className="text-center px-4 py-3 font-semibold text-orange-600">ซ่อม</th>
-                <th className="text-center px-4 py-3 font-semibold text-red-600">ชำรุด</th>
-                <th className="text-center px-4 py-3 font-semibold text-gray-900">รวม</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {customerRows.map((row, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{row.customer}</td>
-                  <td className="px-4 py-3 text-center text-green-600 font-medium">{row.active}</td>
-                  <td className="px-4 py-3 text-center text-blue-600 font-medium">{row.inUse}</td>
-                  <td className="px-4 py-3 text-center text-orange-600 font-medium">{row.maintenance}</td>
-                  <td className="px-4 py-3 text-center text-red-600 font-medium">{row.damaged}</td>
-                  <td className="px-4 py-3 text-center font-bold text-gray-900">{row.total}</td>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1rem' }}>
+        {/* Mold Status Chart (placeholder) */}
+        <div className="card">
+          <h3 style={{ margin: '0 0 1rem 0', fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-color)' }}>สถานะแม่พิมพ์ตามลูกค้า</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ลูกค้า</th>
+                  <th style={{ textAlign: 'center', color: 'var(--color-success)' }}>พร้อมใช้</th>
+                  <th style={{ textAlign: 'center', color: 'var(--color-primary)' }}>ใช้งานอยู่</th>
+                  <th style={{ textAlign: 'center', color: 'var(--color-warning)' }}>ซ่อม</th>
+                  <th style={{ textAlign: 'center', color: 'var(--color-danger)' }}>ชำรุด</th>
+                  <th style={{ textAlign: 'center', color: 'var(--text-color)' }}>รวม</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50 border-t-2 border-gray-300">
-                <td className="px-4 py-3 font-bold text-gray-900">รวมทั้งหมด</td>
-                <td className="px-4 py-3 text-center font-bold text-green-600">{moldStats.active}</td>
-                <td className="px-4 py-3 text-center font-bold text-blue-600">{moldStats.inUse}</td>
-                <td className="px-4 py-3 text-center font-bold text-orange-600">{moldStats.maintenance}</td>
-                <td className="px-4 py-3 text-center font-bold text-red-600">{moldStats.damaged}</td>
-                <td className="px-4 py-3 text-center font-bold text-gray-900">{moldStats.total}</td>
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {customerRows.map((row, i) => (
+                  <tr key={i}>
+                    <td className="font-semibold text-[var(--text-color)]">{row.customer}</td>
+                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--color-success)' }}>{row.active}</td>
+                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--color-primary)' }}>{row.inUse}</td>
+                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--color-warning)' }}>{row.maintenance}</td>
+                    <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--color-danger)' }}>{row.damaged}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-color)' }}>{row.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: 'var(--bg-secondary)', borderTop: '2px solid var(--border-color)' }}>
+                  <td className="font-bold text-[var(--text-color)]" style={{ padding: '0.75rem 1rem' }}>รวมทั้งหมด</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--color-success)' }}>{moldStats.active}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--color-primary)' }}>{moldStats.inUse}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--color-warning)' }}>{moldStats.maintenance}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--color-danger)' }}>{moldStats.damaged}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--text-color)' }}>{moldStats.total}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Top Maintenance Molds */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">แม่พิมพ์ที่ซ่อมบ่อยที่สุด</h3>
-        <div className="space-y-3">
-          {(() => {
-            const moldCount = {};
-            mtItems.forEach(m => {
-              const code = m.mold?.moldCode || 'N/A';
-              const name = m.mold?.name || '';
-              if (!moldCount[code]) moldCount[code] = { mold: code, name, count: 0 };
-              moldCount[code].count++;
-            });
-            const sorted = Object.values(moldCount).sort((a, b) => b.count - a.count).slice(0, 5);
-            const maxCount = sorted[0]?.count || 1;
-            return sorted.map((item, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="w-24 text-sm font-medium text-blue-600">{item.mold}</div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700">{item.name}</span>
-                    <span className="text-sm font-semibold text-gray-900">{item.count} ครั้ง</span>
+        {/* Top Maintenance Molds */}
+        <div className="card">
+          <h3 style={{ margin: '0 0 1rem 0', fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-color)' }}>แม่พิมพ์ที่ซ่อมบ่อยที่สุด</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {(() => {
+              const moldCount = {};
+              mtItems.forEach(m => {
+                const code = m.mold?.moldCode || 'N/A';
+                const name = m.mold?.name || '';
+                if (!moldCount[code]) moldCount[code] = { mold: code, name, count: 0 };
+                moldCount[code].count++;
+              });
+              const sorted = Object.values(moldCount).sort((a, b) => b.count - a.count).slice(0, 5);
+              const maxCount = sorted[0]?.count || 1;
+              return sorted.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', fontWeight: 'bold', color: 'var(--color-primary)', fontSize: '0.85rem', width: '90px', textAlign: 'center' }}>
+                    {item.mold}
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-orange-500" style={{ width: `${(item.count / maxCount) * 100}%` }}></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-color)' }}>{item.name}</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-color)' }}>{item.count} ครั้ง</span>
+                    </div>
+                    <div style={{ width: '100%', background: 'var(--border-color)', borderRadius: '100px', height: '8px' }}>
+                      <div style={{ height: '8px', borderRadius: '100px', background: 'var(--color-warning)', width: `${(item.count / maxCount) * 100}%` }}></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ));
-          })()}
-          {mtItems.length === 0 && <p className="text-gray-400 text-sm text-center py-4">ยังไม่มีข้อมูลงานแจ้งซ่อม</p>}
+              ));
+            })()}
+            {mtItems.length === 0 && <p className="text-[var(--text-muted)] text-sm text-center py-4">ยังไม่มีข้อมูลงานแจ้งซ่อม</p>}
+          </div>
         </div>
       </div>
     </div>

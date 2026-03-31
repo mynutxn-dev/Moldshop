@@ -191,257 +191,250 @@ const Inventory = () => {
 
   const lowStock = filtered.filter(i => i.quantity <= i.minStock);
 
+  const quickNums = [
+    { value: filtered.length, label: 'ทั้งหมด', color: '#4a7cff', sparkPoints: '0,5 10,15 20,10 30,20 40,15 50,22 60,18' },
+    { value: filtered.filter(i => getStatus(i) === 'available').length, label: 'พร้อมใช้', color: '#10b981', sparkPoints: '0,20 10,18 20,22 30,15 40,18 50,12 60,10' },
+    { value: filtered.filter(i => getStatus(i) === 'low_stock').length, label: 'ใกล้หมด', color: '#f59e0b', sparkPoints: '0,10 10,15 20,8 30,12 40,6 50,14 60,8' },
+    { value: filtered.filter(i => getStatus(i) === 'out_of_stock').length, label: 'หมดสต๊อค', color: '#ef4444', sparkPoints: '0,15 10,12 20,18 30,22 40,15 50,10 60,14' },
+  ];
+
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการสต๊อค</h1>
-          <p className="text-gray-500 mt-1 text-sm">อุปกรณ์ เครื่องมือ และวัสดุสำหรับงาน Moldshop</p>
+          <h1 className="page-title">📦 จัดการสต๊อค (Inventory)</h1>
+          <p className="text-muted" style={{ marginTop: '0.5rem' }}>อุปกรณ์ เครื่องมือ และวัสดุสำหรับงาน Moldshop</p>
         </div>
-        <div className="mt-3 sm:mt-0 flex items-center gap-2">
-          <button onClick={fetchItems} className="inline-flex items-center px-3 py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors mr-2">
+        <div className="page-header-actions flex gap-2">
+          <button onClick={fetchItems} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
             <FiRefreshCw className="h-4 w-4" />
           </button>
-          <button onClick={() => openModal()} className="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors btn-press">
-            <FiPlus className="mr-2 h-4 w-4" /> เพิ่มรายการ
+          <button onClick={() => openModal()} className="btn btn-primary">
+            <FiPlus className="mr-1 h-4 w-4 inline" /> เพิ่มรายการ
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 mb-4 bg-gray-100 rounded-xl p-1 max-w-xs">
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
         <button
           onClick={() => setActiveTab('stock')}
-          className={`flex-1 flex items-center justify-center py-2 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === 'stock' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`btn ${activeTab === 'stock' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '0.5rem 1rem', borderRadius: '100px' }}
         >
-          <FiPackage className="mr-1.5 h-4 w-4" /> สต๊อค
+          <FiPackage className="mr-1.5 h-4 w-4 inline" /> สต๊อค
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`flex-1 flex items-center justify-center py-2 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`btn ${activeTab === 'history' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '0.5rem 1rem', borderRadius: '100px' }}
         >
-          <FiList className="mr-1.5 h-4 w-4" /> ประวัติเบิก
-          {history.length > 0 && <span className="ml-1.5 bg-blue-100 text-blue-600 text-xs font-bold px-1.5 py-0.5 rounded-full">{history.length > 99 ? '99+' : history.length}</span>}
+          <FiList className="mr-1.5 h-4 w-4 inline" /> ประวัติเบิก
+          {history.length > 0 && <span className="badge badge-neutral ml-2">{history.length > 99 ? '99+' : history.length}</span>}
         </button>
       </div>
 
       {activeTab === 'stock' ? (
         <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 card-hover">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">ทั้งหมด</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{filtered.length}</p>
-                </div>
-                <div className="w-10 h-10 gradient-blue rounded-xl flex items-center justify-center">
-                  <FiPackage className="h-5 w-5 text-white" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 card-hover">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">พร้อมใช้</p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">{filtered.filter(i => getStatus(i) === 'available').length}</p>
-                </div>
-                <div className="w-10 h-10 gradient-green rounded-xl flex items-center justify-center">
-                  <FiCheckCircle className="h-5 w-5 text-white" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 card-hover">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">ใกล้หมด</p>
-                  <p className="text-2xl font-bold text-orange-600 mt-1">{filtered.filter(i => getStatus(i) === 'low_stock').length}</p>
-                </div>
-                <div className="w-10 h-10 gradient-orange rounded-xl flex items-center justify-center">
-                  <FiClock className="h-5 w-5 text-white" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 card-hover">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">หมดสต๊อค</p>
-                  <p className="text-2xl font-bold text-red-600 mt-1">{filtered.filter(i => getStatus(i) === 'out_of_stock').length}</p>
-                </div>
-                <div className="w-10 h-10 gradient-red rounded-xl flex items-center justify-center">
-                  <FiAlertCircle className="h-5 w-5 text-white" />
-                </div>
+          <div className="db-quick-stats-row" style={{ marginBottom: '1.5rem' }}>
+            <div className="db-glass-card" style={{ width: '100%' }}>
+              <div className="db-nums-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                {quickNums.map((item) => (
+                  <div className="db-num-item" key={item.label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div className="db-num-value">{item.value}</div>
+                        <div className="db-num-label">{item.label}</div>
+                      </div>
+                      <svg className="db-sparkline" viewBox="0 0 60 28" fill="none">
+                        <polyline points={item.sparkPoints} stroke={item.color} strokeWidth="2" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="card">
+            <div className="search-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+              <div className="search-input-wrapper" style={{ flex: 1, minWidth: '250px' }}>
+                <span className="search-icon">🔍</span>
                 <input
                   type="text"
+                  className="search-input"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="ค้นหา รหัส, ชื่ออุปกรณ์..."
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="form-input w-auto">
                 <option value="">หมวดหมู่ทั้งหมด</option>
                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
-          </div>
 
-          {/* Table */}
           {loading ? <SkeletonTable rows={8} cols={7} /> : items.length === 0 && !search && !categoryFilter ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-400">
-              <FiPackage className="h-12 w-12 mx-auto mb-3" />
-              <p className="font-medium">ยังไม่มีรายการสต๊อค</p>
-              <p className="text-sm mt-1">กดปุ่ม "เพิ่มรายการ" เพื่อเริ่มต้น</p>
+            <div className="empty-state">
+              <div className="empty-state-icon text-slate-300">
+                <FiPackage className="h-12 w-12 mx-auto" />
+              </div>
+              <div className="empty-state-title">ยังไม่มีรายการสต๊อค</div>
+              <p className="text-sm mt-1 text-slate-500">กดปุ่ม "เพิ่มรายการ" เพื่อเริ่มต้น</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+            <div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="table">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">รหัส</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">ชื่อรายการ</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">หมวดหมู่</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">ที่จัดเก็บ</th>
-                      <th className="text-center px-4 py-3 font-semibold text-gray-600">คงเหลือ</th>
-                      <th className="text-left px-4 py-3 font-semibold text-gray-600">สถานะ</th>
-                      <th className="text-right px-4 py-3 font-semibold text-gray-600">จัดการ</th>
+                    <tr>
+                      <th style={{ width: '80px' }}>รหัส</th>
+                      <th>ชื่อรายการ</th>
+                      <th>หมวดหมู่</th>
+                      <th>ที่จัดเก็บ</th>
+                      <th style={{ textAlign: 'center' }}>คงเหลือ</th>
+                      <th>สถานะ</th>
+                      <th style={{ textAlign: 'right', width: '120px' }}>จัดการ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filtered.map((item) => {
-                      const status = getStatus(item);
-                      const st = statusMap[status];
-                      return (
-                        <tr key={item.id} className="hover:bg-gray-50 transition-colors table-row-hover">
-                          <td className="px-4 py-3 font-medium text-blue-600">{item.itemCode}</td>
-                          <td className="px-4 py-3">
-                            <div>
-                              <p className="font-medium text-gray-900">{item.itemName}</p>
-                              {item.notes && <p className="text-xs text-gray-500">{item.notes}</p>}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{item.category}</td>
-                          <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{item.location}</td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`font-medium ${status !== 'available' ? 'text-red-600' : 'text-gray-900'}`}>
-                              {item.quantity} {item.unit}
-                            </span>
-                            <p className="text-xs text-gray-400">ขั้นต่ำ {item.minStock}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${st.color}`}>
-                              {st.label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end space-x-1">
-                              <button
-                                onClick={() => openStockInModal(item)}
-                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
-                                title="รับเข้าสต๊อค"
-                              >
-                                <FiPlusCircle className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => openWithdrawModal(item)}
-                                disabled={item.quantity <= 0}
-                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                                title="เบิกออก"
-                              >
-                                <FiShoppingCart className="h-4 w-4" />
-                              </button>
-                              <button onClick={() => openModal(item)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
-                                <FiEdit2 className="h-4 w-4" />
-                              </button>
-                              <button onClick={() => handleDelete(item.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                <FiTrash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
+                    <tbody className="divide-y divide-gray-100">
+                      {filtered.map((item) => {
+                        const status = getStatus(item);
+                        // Convert old statusMap tones to new badge classes
+                        let tone = 'badge-neutral';
+                        if (status === 'available') tone = 'badge-success';
+                        else if (status === 'low_stock') tone = 'badge-warning';
+                        else if (status === 'out_of_stock') tone = 'badge-danger';
+
+                        return (
+                          <tr key={item.id}>
+                            <td className="font-semibold text-[var(--color-primary)]">{item.itemCode}</td>
+                            <td>
+                              <div>
+                                <p className="font-semibold text-[var(--text-color)]">{item.itemName}</p>
+                                {item.notes && <p className="text-xs text-[var(--text-muted)]">{item.notes}</p>}
+                              </div>
+                            </td>
+                            <td className="text-[var(--text-muted)]">{item.category}</td>
+                            <td className="text-[var(--text-muted)]">{item.location}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <span style={{ fontWeight: 700, color: status !== 'available' ? 'var(--color-danger)' : 'var(--text-color)' }}>
+                                {item.quantity} {item.unit}
+                              </span>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ขั้นต่ำ {item.minStock}</p>
+                            </td>
+                            <td>
+                              <span className={`badge ${tone}`}>
+                                {statusMap[status]?.label || 'ไม่ทราบ'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                <button
+                                  onClick={() => openStockInModal(item)}
+                                  style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: 'var(--bg-secondary)', 
+                                    color: 'var(--color-success)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}
+                                  title="รับเข้าสต๊อค"
+                                >
+                                  <FiPlusCircle size={16} />
+                                </button>
+                                <button
+                                  onClick={() => openWithdrawModal(item)}
+                                  disabled={item.quantity <= 0}
+                                  style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: 'var(--bg-secondary)', 
+                                    color: 'var(--color-primary)', cursor: item.quantity <= 0 ? 'not-allowed' : 'pointer', opacity: item.quantity <= 0 ? 0.5 : 1,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}
+                                  title="เบิกออก"
+                                >
+                                  <FiShoppingCart size={16} />
+                                </button>
+                                <button onClick={() => openModal(item)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                  <FiEdit2 size={16} />
+                                </button>
+                                <button onClick={() => handleDelete(item.id)} style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer' }}>
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
                 </table>
               </div>
               {filtered.length === 0 && (
-                <div className="p-12 text-center text-gray-400">
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <FiPackage className="h-12 w-12 mx-auto mb-3" />
                   <p>ไม่พบรายการสต๊อค</p>
                 </div>
               )}
-              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
+              <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 แสดง {filtered.length} จาก {items.length} รายการ
-                {lowStock.length > 0 && <span className="ml-2 text-orange-600 font-medium">⚠️ {lowStock.length} รายการใกล้หมด</span>}
+                {lowStock.length > 0 && <span style={{ marginLeft: '0.5rem', color: 'var(--color-warning)', fontWeight: 600 }}>⚠️ {lowStock.length} รายการใกล้หมด</span>}
               </div>
             </div>
           )}
+          </div>
         </>
       ) : (
         /* ===== ประวัติเบิกของ ===== */
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <div className="card">
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">วันที่/เวลา</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">รหัส</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">รายการ</th>
-                  <th className="text-center px-4 py-3 font-semibold text-gray-600">จำนวน</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">ผู้เบิก</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">วัตถุประสงค์</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">รหัส Mold</th>
+                <tr>
+                  <th>วันที่/เวลา</th>
+                  <th>รหัส</th>
+                  <th>รายการ</th>
+                  <th style={{ textAlign: 'center' }}>จำนวน</th>
+                  <th>ผู้เบิก</th>
+                  <th>วัตถุประสงค์</th>
+                  <th>รหัส Mold</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {history.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                  <tr key={record.id}>
+                    <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {new Date(record.createdAt).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' })}
                       <br />
-                      {new Date(record.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                      <span style={{ fontWeight: 600 }}>{new Date(record.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-blue-600">{record.item?.itemCode}</td>
-                    <td className="px-4 py-3 text-gray-900">{record.item?.itemName}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="font-semibold text-[var(--color-primary)]">{record.item?.itemCode}</td>
+                    <td className="font-semibold text-[var(--text-color)]">{record.item?.itemName}</td>
+                    <td style={{ textAlign: 'center' }}>
                       {record.type === 'in' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600">
-                          <FiArrowUp className="h-3 w-3" />+{record.quantity} {record.item?.unit}
+                        <span className="badge badge-success">
+                          <FiArrowUp className="inline mr-1" />+{record.quantity} {record.item?.unit}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
-                          <FiArrowDown className="h-3 w-3" />-{record.quantity} {record.item?.unit}
+                        <span className="badge badge-danger">
+                          <FiArrowDown className="inline mr-1" />-{record.quantity} {record.item?.unit}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.performedBy}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{record.notes || '-'}</td>
-                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{record.source || '-'}</td>
+                    <td className="text-[var(--text-muted)]">{record.performedBy}</td>
+                    <td className="text-[var(--text-muted)]">{record.notes || '-'}</td>
+                    <td className="text-[var(--text-muted)]">{record.source || '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {historyLoading && <div className="p-8 text-center text-gray-400"><FiRefreshCw className="animate-spin h-6 w-6 mx-auto" /></div>}
+          {historyLoading && <div style={{ padding: '2rem', textAlign: 'center' }}><FiRefreshCw className="animate-spin h-6 w-6 mx-auto text-slate-400" /></div>}
           {!historyLoading && history.length === 0 && (
-            <div className="p-12 text-center text-gray-400">
-              <FiList className="h-12 w-12 mx-auto mb-3" />
+            <div className="empty-state" style={{ marginTop: '1rem' }}>
+              <div className="empty-state-icon">
+                <FiList className="h-12 w-12 mx-auto" />
+              </div>
               <p>ยังไม่มีประวัติการเบิก/รับของ</p>
             </div>
           )}
           {history.length > 0 && (
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
+            <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               ทั้งหมด {history.length} รายการ
             </div>
           )}

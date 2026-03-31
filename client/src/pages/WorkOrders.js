@@ -313,93 +313,100 @@ const WorkOrders = () => {
   const completedProjects = summary.completed || 0;
   const lateProjects = items.filter((item) => item.dueDate && new Date(item.dueDate) < new Date() && !['completed', 'cancelled'].includes(item.status)).length;
 
-  return (
-    <div className="space-y-6">
-      <section className="page-hero animate-fade-in-up">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <p className="page-kicker">New Model Pipeline</p>
-            <h1 className="page-title">ติดตามงาน New Model แบบ end-to-end จากมุมมองที่อ่านง่ายขึ้น</h1>
-            <p className="page-subtitle">
-              เห็นภาพรวมของทุก stage ตั้งแต่ออกแบบจนเสร็จสิ้น พร้อม drill-in ไปอัปเดตสถานะ แก้ไขข้อมูล หรือแนบรูปประกอบงานได้จากหน้าเดียว
-            </p>
-          </div>
-          <div className="page-actions">
-            <Link to="/work-orders/calendar" className="btn-secondary">
-              <FiCalendar className="h-4 w-4" /> ปฏิทิน
-            </Link>
-            <button onClick={openModal} className="btn-primary">
-              <FiPlus className="h-4 w-4" /> สร้าง New Model
-            </button>
-          </div>
-        </div>
-        <div className="overview-strip">
-          <div className="overview-card overview-card--primary">
-            <span className="overview-card-label">ทั้งหมด</span>
-            <strong className="overview-card-value">{total}</strong>
-            <span className="overview-card-meta">โปรเจกต์ในระบบ</span>
-          </div>
-          <div className="overview-card overview-card--warning">
-            <span className="overview-card-label">กำลังดำเนินการ</span>
-            <strong className="overview-card-value">{activeProjects}</strong>
-            <span className="overview-card-meta">ยังไม่ปิดงาน</span>
-          </div>
-          <div className="overview-card overview-card--success">
-            <span className="overview-card-label">เสร็จสิ้น</span>
-            <strong className="overview-card-value">{completedProjects}</strong>
-            <span className="overview-card-meta">ปิดงานแล้ว</span>
-          </div>
-          <div className="overview-card overview-card--danger">
-            <span className="overview-card-label">เกินกำหนด</span>
-            <strong className="overview-card-value">{lateProjects}</strong>
-            <span className="overview-card-meta">ต้องติดตามเร่งด่วน</span>
-          </div>
-        </div>
-      </section>
+  const quickNums = [
+    { value: total, label: 'โปรเจกต์ทั้งหมด', color: '#4a7cff', sparkPoints: '0,5 10,15 20,10 30,20 40,15 50,22 60,18' },
+    { value: activeProjects, label: 'กำลังดำเนินการ', color: '#f59e0b', sparkPoints: '0,20 10,18 20,22 30,15 40,18 50,12 60,10' },
+    { value: completedProjects, label: 'เสร็จสิ้น', color: '#10b981', sparkPoints: '0,10 10,15 20,8 30,12 40,6 50,14 60,8' },
+    { value: lateProjects, label: 'เกินกำหนด', color: '#ef4444', sparkPoints: '0,15 10,12 20,18 30,22 40,15 50,10 60,14' },
+  ];
 
-      <div className="filter-surface space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilterStage('')}
-            className={`status-pill ${!filterStage ? 'status-pill-progress' : 'status-pill-cancelled'}`}
-          >
-            ทั้งหมด ({total})
-          </button>
-          {STAGES.filter(s => s.step > 0).map(s => (
-            <button
-              key={s.key}
-              onClick={() => setFilterStage(filterStage === s.key ? '' : s.key)}
-              className="status-pill"
-              style={{
-                background: filterStage === s.key ? s.color : s.bg,
-                color: filterStage === s.key ? '#fff' : s.color,
-                borderColor: `${s.color}33`,
-              }}
-            >
-              {s.label} {summary[s.key] !== undefined ? `(${summary[s.key]})` : ''}
-            </button>
-          ))}
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">🚀 งาน New Model (Work Orders)</h1>
+          <p className="text-muted" style={{ marginTop: '0.5rem' }}>ติดตามความคืบหน้าของโปรเจกต์สร้างแม่พิมพ์ใหม่แบบ end-to-end</p>
         </div>
-        <div className="search-field">
-          <FiSearch className="h-4 w-4" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหา เลข New Model, ชื่องาน, แม่พิมพ์..."
-          />
+        <div className="page-header-actions flex gap-2">
+          <Link to="/work-orders/calendar" className="btn btn-secondary">
+            <FiCalendar className="mr-1 h-4 w-4 inline" /> ปฏิทิน
+          </Link>
+          <button onClick={openModal} className="btn btn-primary">
+            <FiPlus className="mr-1 h-4 w-4 inline" /> สร้าง New Model
+          </button>
         </div>
       </div>
 
+      <div className="db-quick-stats-row" style={{ marginBottom: '1.5rem' }}>
+        <div className="db-glass-card" style={{ width: '100%' }}>
+          <div className="db-nums-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+            {quickNums.map((item) => (
+              <div className="db-num-item" key={item.label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div className="db-num-value">{item.value}</div>
+                    <div className="db-num-label">{item.label}</div>
+                  </div>
+                  <svg className="db-sparkline" viewBox="0 0 60 28" fill="none">
+                    <polyline points={item.sparkPoints} stroke={item.color} strokeWidth="2" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="search-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+          <div className="search-input-wrapper" style={{ flex: 1, minWidth: '250px' }}>
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหา เลข New Model, ชื่องาน, แม่พิมพ์..."
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+            <button
+              onClick={() => setFilterStage('')}
+              className={`btn btn-sm ${!filterStage ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.3rem 0.75rem', borderRadius: '100px' }}
+            >
+              ทั้งหมด ({total})
+            </button>
+            {STAGES.filter(s => s.step > 0).map(s => (
+              <button
+                key={s.key}
+                onClick={() => setFilterStage(filterStage === s.key ? '' : s.key)}
+                className={`btn btn-sm ${filterStage === s.key ? 'btn-primary' : 'btn-secondary'}`}
+                style={{
+                  padding: '0.3rem 0.75rem', 
+                  borderRadius: '100px',
+                  background: filterStage === s.key ? s.color : 'transparent',
+                  color: filterStage === s.key ? '#fff' : s.color,
+                  borderColor: filterStage === s.key ? s.color : `${s.color}33`,
+                }}
+              >
+                {s.label} {summary[s.key] !== undefined ? `(${summary[s.key]})` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
       {loading ? <SkeletonList count={4} /> : (
-        <div className="space-y-6">
+        <div style={{ padding: '1.5rem', backgroundColor: 'var(--card-bg)' }}>
           {(() => {
             if (items.length === 0) {
               return (
-                <div className="empty-state-card">
-                  <FiClipboard className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-                  <p className="text-base font-semibold text-slate-900">ไม่พบงาน New Model</p>
-                  <p className="mt-2 text-sm text-slate-500">ลองปรับตัวกรองหรือสร้างโปรเจกต์ใหม่เพื่อเริ่มต้น</p>
+                <div className="empty-state">
+                  <div className="empty-state-icon text-slate-300">
+                    <FiClipboard className="h-8 w-8 mx-auto" />
+                  </div>
+                  <div className="empty-state-title">ไม่พบงาน New Model</div>
+                  <p className="mt-2 text-sm text-slate-500 text-center">ลองปรับตัวกรองหรือสร้างโปรเจกต์ใหม่เพื่อเริ่มต้น</p>
                 </div>
               );
             }
@@ -421,61 +428,87 @@ const WorkOrders = () => {
 
             // 3) Render each group
             return sortedCustomers.map(customer => (
-              <section key={customer}>
-                <div className="group-header pl-1">
-                  <div className="group-avatar">
+              <section key={customer} style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1rem' }}>
+                  <div style={{ 
+                    width: '40px', height: '40px', borderRadius: '12px', 
+                    background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem'
+                  }}>
                     {customer !== 'ไม่ระบุลูกค้า' ? customer.charAt(0).toUpperCase() : '?'}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-bold tracking-tight text-slate-950">{customer}</h2>
-                    <p className="mt-1 text-sm text-slate-500">โปรเจกต์ New Model ของลูกค้ารายนี้</p>
+                  <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-color)', margin: 0 }}>{customer}</h2>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>โปรเจกต์ New Model ของลูกค้ารายนี้</p>
                   </div>
-                  <span className="group-chip">
+                  <span className="badge badge-neutral" style={{ fontSize: '0.8rem' }}>
                     {groups[customer].length} Projects
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                   {groups[customer].map((wo) => {
                     const pri = priorityMap[wo.priority] || priorityMap.normal;
                     return (
                       <div
                         key={wo.id}
                         onClick={() => openUpdateModal(wo)}
-                        className="record-card ml-3"
+                        style={{
+                          background: 'var(--surface-base)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '16px',
+                          padding: '1.25rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: 'var(--shadow-sm)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                          e.currentTarget.style.borderColor = 'var(--border-color)';
+                        }}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                           <div className="flex items-center gap-3">
-                            <span className="text-lg font-black tracking-tight text-slate-950">{wo.orderCode}</span>
+                            <span style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--text-color)' }}>{wo.orderCode}</span>
                             <span
-                              className="group-chip"
-                              style={{ color: pri.color, backgroundColor: pri.bg, borderColor: pri.color === '#ffffff' ? 'black' : 'transparent' }}
+                              className="badge"
+                              style={{ color: pri.color, backgroundColor: pri.bg, borderColor: pri.color === '#ffffff' ? 'black' : 'transparent', fontSize: '0.75rem' }}
                             >
                               {pri.label}
                             </span>
                             <StagePipeline currentStatus={wo.status} compact />
                           </div>
-                          <span className="record-card-id">{typeMap[wo.type] || wo.type}</span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>{typeMap[wo.type] || wo.type}</span>
                         </div>
 
                         <div className="flex justify-between items-start gap-4 mb-5">
                           <div className="min-w-0 flex-1">
-                            <h3 className="record-card-title">{wo.title}</h3>
-                            <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{wo.moldCode || wo.mold_code || '-'}</p>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-color)', margin: '0' }}>{wo.title}</h3>
+                            <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400" style={{ margin: '0.25rem 0 0 0' }}>{wo.moldCode || wo.mold_code || '-'}</p>
                           </div>
                           <button
                             onClick={(e) => openEditModal(e, wo)}
-                            className="action-icon-button"
                             title="แก้ไขข้อมูล"
+                            style={{ 
+                              width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
+                              border: 'none', cursor: 'pointer'
+                            }}
                           >
-                            <FiEdit2 size={16} />
+                            <FiEdit2 size={14} />
                           </button>
                         </div>
 
                         <StagePipeline currentStatus={wo.status} />
 
-                        <div className="record-card-meta mt-5">
-                          <span>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <FiCalendar className="h-4 w-4" />
                             Due {wo.due_date ? new Date(wo.due_date).toLocaleDateString('th-TH') : '-'}
                           </span>
@@ -492,6 +525,7 @@ const WorkOrders = () => {
           })()}
         </div>
       )}
+      </div>
 
       {/* ===== Create Work Order Modal ===== */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="สร้าง New Model ใหม่" size="lg">

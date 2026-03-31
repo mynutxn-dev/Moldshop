@@ -86,22 +86,21 @@ const WorkOrderCalendar = () => {
     return (
         <div>
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <Link to="/work-orders" className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                        <FiArrowLeft className="h-5 w-5" />
+            <div className="page-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Link to="/work-orders" className="btn btn-secondary" style={{ padding: '0.5rem' }}>
+                        <FiArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">ปฏิทิน New model</h1>
-                        <p className="text-gray-500 mt-0.5 text-sm">Gantt · แสดงระยะเวลาการทำงานแม่พิมพ์รายเดือน</p>
+                        <h1 className="page-title">📅 ปฏิทิน New model</h1>
+                        <p className="text-muted" style={{ marginTop: '0.25rem' }}>Gantt · แสดงระยะเวลาการทำงานแม่พิมพ์รายเดือน</p>
                     </div>
                 </div>
-                <Link
-                    to="/work-orders"
-                    className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                    <FiList className="mr-2 h-4 w-4" /> มุมมองรายการ
-                </Link>
+                <div className="page-header-actions mt-3 sm:mt-0">
+                    <Link to="/work-orders" className="btn btn-secondary">
+                        <FiList className="mr-1.5 h-4 w-4 inline" /> มุมมองรายการ
+                    </Link>
+                </div>
             </div>
 
             {/* Stage Legend */}
@@ -120,17 +119,17 @@ const WorkOrderCalendar = () => {
             </div>
 
             {/* Gantt Chart */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.5rem' }}>
                 {/* Month Navigator */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <button onClick={prevMonth} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                    <button onClick={prevMonth} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
                         <FiChevronLeft className="h-5 w-5" />
                     </button>
-                    <div className="text-center">
-                        <h2 className="text-lg font-bold text-gray-900">{monthNames[month]} {year + 543}</h2>
-                        <p className="text-xs text-gray-400">{visibleItems.length} New model ในเดือนนี้</p>
+                    <div style={{ textAlign: 'center' }}>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-color)' }}>{monthNames[month]} {year + 543}</h2>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>{visibleItems.length} New model ในเดือนนี้</p>
                     </div>
-                    <button onClick={nextMonth} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                    <button onClick={nextMonth} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
                         <FiChevronRight className="h-5 w-5" />
                     </button>
                 </div>
@@ -246,47 +245,47 @@ const WorkOrderCalendar = () => {
             </div>
 
             {/* Bottom Stage Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
                 {STAGES.filter(s => s.step > 0 && s.key !== 'cancelled').slice(0, 4).map(s => (
-                    <div key={s.key} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: s.color + '18' }}>
-                            <span className="text-base font-bold" style={{ color: s.color }}>{stageCounts[s.key] || 0}</span>
+                    <div key={s.key} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: s.color + '18' }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 'bold', color: s.color }}>{stageCounts[s.key] || 0}</span>
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-gray-800">{s.label}</p>
-                            <p className="text-[11px] text-gray-400">{s.label_th}</p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>{s.label}</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.label_th}</p>
                         </div>
                     </div>
                 ))}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                 {STAGES.filter(s => s.step > 0 && s.key !== 'cancelled').slice(4).map(s => (
-                    <div key={s.key} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: s.color + '18' }}>
-                            <span className="text-base font-bold" style={{ color: s.color }}>{stageCounts[s.key] || 0}</span>
+                    <div key={s.key} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: s.color + '18' }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 'bold', color: s.color }}>{stageCounts[s.key] || 0}</span>
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-gray-800">{s.label}</p>
-                            <p className="text-[11px] text-gray-400">{s.label_th}</p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>{s.label}</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.label_th}</p>
                         </div>
                     </div>
                 ))}
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-100">
-                        <span className="text-base font-bold text-gray-500">{stageCounts['cancelled'] || 0}</span>
+                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'var(--bg-secondary)' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{stageCounts['cancelled'] || 0}</span>
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-gray-800">Cancelled</p>
-                        <p className="text-[11px] text-gray-400">ยกเลิก</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Cancelled</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>ยกเลิก</p>
                     </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-50">
-                        <span className="text-base font-bold text-indigo-600">{visibleItems.length}</span>
+                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'var(--color-primary-light)' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>{visibleItems.length}</span>
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-gray-800">ทั้งหมด</p>
-                        <p className="text-[11px] text-gray-400">ในเดือนนี้</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>ทั้งหมด</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>ในเดือนนี้</p>
                     </div>
                 </div>
             </div>

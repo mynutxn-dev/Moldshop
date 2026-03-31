@@ -88,30 +88,31 @@ const MaintenanceCalendar = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <Link to="/maintenance" className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg">
-            <FiArrowLeft className="h-5 w-5" />
+      <div className="page-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Link to="/maintenance" className="btn btn-secondary" style={{ padding: '0.5rem' }}>
+            <FiArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">แผนงานแจ้งซ่อม</h1>
-            <p className="text-gray-500 mt-1">ปฏิทินแสดงระยะเวลางานแจ้งซ่อม</p>
+            <h1 className="page-title">📅 แผนงานแจ้งซ่อม</h1>
+            <p className="text-muted" style={{ marginTop: '0.25rem' }}>ปฏิทินแสดงระยะเวลางานแจ้งซ่อม</p>
           </div>
         </div>
-        <Link to="/maintenance" className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
-          <FiList className="mr-2 h-4 w-4" /> มุมมองรายการ
-        </Link>
+        <div className="page-header-actions mt-3 sm:mt-0">
+          <Link to="/maintenance" className="btn btn-secondary">
+            <FiList className="mr-1.5 h-4 w-4 inline" /> มุมมองรายการ
+          </Link>
+        </div>
       </div>
 
       {/* Month Navigator */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <button onClick={prevMonth} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+      <div className="card" style={{ padding: 0, marginBottom: '1.5rem', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+          <button onClick={prevMonth} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
             <FiChevronLeft className="h-5 w-5" />
           </button>
-          <h2 className="text-lg font-bold text-gray-900">{monthNames[month]} {year + 543}</h2>
-          <button onClick={nextMonth} className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--text-color)' }}>{monthNames[month]} {year + 543}</h2>
+          <button onClick={nextMonth} className="btn btn-secondary" style={{ padding: '0.5rem' }}>
             <FiChevronRight className="h-5 w-5" />
           </button>
         </div>
@@ -227,22 +228,22 @@ const MaintenanceCalendar = () => {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-gray-900">{visibleItems.length}</p>
-          <p className="text-xs text-gray-500 mt-1">รายการทั้งหมด</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+          <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--color-primary)' }}>{visibleItems.length}</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>รายการทั้งหมด</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-gray-500">{visibleItems.filter(i => i.status === 'pending').length}</p>
-          <p className="text-xs text-gray-500 mt-1">รอดำเนินการ</p>
+        <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+          <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--text-color)' }}>{visibleItems.filter(i => i.status === 'pending').length}</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>รอดำเนินการ</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{visibleItems.filter(i => i.status === 'in_progress').length}</p>
-          <p className="text-xs text-gray-500 mt-1">กำลังซ่อม</p>
+        <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+          <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--color-warning)' }}>{visibleItems.filter(i => i.status === 'in_progress').length}</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>กำลังซ่อม</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{visibleItems.filter(i => i.status === 'completed').length}</p>
-          <p className="text-xs text-gray-500 mt-1">เสร็จสิ้น</p>
+        <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+          <p style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, color: 'var(--color-success)' }}>{visibleItems.filter(i => i.status === 'completed').length}</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>เสร็จสิ้น</p>
         </div>
       </div>
     </div>

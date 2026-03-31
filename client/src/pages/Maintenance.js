@@ -249,79 +249,87 @@ const Maintenance = () => {
   const [lightboxImg, setLightboxImg] = useState(null);
 
   const filtered = items;
-  const overviewCards = [
-    { label: 'ทั้งหมด', value: total, meta: 'งานแจ้งซ่อมในระบบ', tone: 'primary' },
-    { label: 'รอดำเนินการ', value: counts.pending, meta: 'รอทีมรับงาน', tone: 'warning' },
-    { label: 'กำลังซ่อม', value: counts.working, meta: 'อยู่ระหว่างดำเนินการ', tone: 'neutral' },
-    { label: 'เสร็จสิ้น', value: counts.done, meta: 'ปิดงานแล้ว', tone: 'success' },
+  const quickNums = [
+    { value: total, label: 'ทั้งหมด', color: '#4a7cff', sparkPoints: '0,5 10,15 20,10 30,20 40,15 50,22 60,18' },
+    { value: counts.pending, label: 'รอดำเนินการ', color: '#f59e0b', sparkPoints: '0,20 10,18 20,22 30,15 40,18 50,12 60,10' },
+    { value: counts.working, label: 'กำลังซ่อม', color: '#3b82f6', sparkPoints: '0,10 10,15 20,8 30,12 40,6 50,14 60,8' },
+    { value: counts.done, label: 'เสร็จสิ้น', color: '#10b981', sparkPoints: '0,15 10,12 20,18 30,22 40,15 50,10 60,14' },
   ];
 
   return (
-    <div className="space-y-6">
-      <section className="page-hero animate-fade-in-up">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <p className="page-kicker">Maintenance Operations</p>
-            <h1 className="page-title">จัดการงานแจ้งซ่อมและบำรุงรักษาแม่พิมพ์ในมุมมองเดียว</h1>
-            <p className="page-subtitle">
-              ติดตามงานที่กำลังรอ งานที่อยู่ระหว่างซ่อม และงานที่ปิดแล้วได้จากพื้นที่เดียว พร้อมเข้า modal เพื่ออัปเดตสถานะหรือแนบรูปเพิ่มเติมได้ทันที
-            </p>
-          </div>
-          <div className="page-actions">
-            <Link to="/maintenance/calendar" className="btn-secondary">
-              <FiCalendar className="h-4 w-4" /> ปฏิทินแผนซ่อม
-            </Link>
-            <button onClick={openModal} className="btn-primary">
-              <FiPlus className="h-4 w-4" /> แจ้งซ่อม
-            </button>
-          </div>
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">🔧 จัดการงานแจ้งซ่อม (Maintenance)</h1>
+          <p className="text-muted" style={{ marginTop: '0.5rem' }}>ติดตามสถานะ อัปเดตงาน และบำรุงรักษาแม่พิมพ์</p>
         </div>
-        <div className="overview-strip">
-          {overviewCards.map((card) => (
-            <div key={card.label} className={`overview-card overview-card--${card.tone}`}>
-              <span className="overview-card-label">{card.label}</span>
-              <strong className="overview-card-value">{card.value}</strong>
-              <span className="overview-card-meta">{card.meta}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="segmented-surface">
-        {maintenanceTabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`segmented-button ${tab === t.key ? 'is-active' : ''}`}
-          >
-            <t.icon className="h-4 w-4" />
-            <span>{t.label}</span>
-            <span className="segmented-counter">{counts[t.key]}</span>
+        <div className="page-header-actions flex gap-2">
+          <Link to="/maintenance/calendar" className="btn btn-secondary">
+            <FiCalendar className="mr-1 h-4 w-4 inline" /> ปฏิทินแผนซ่อม
+          </Link>
+          <button onClick={openModal} className="btn btn-primary">
+            <FiPlus className="mr-1 h-4 w-4 inline" /> แจ้งซ่อม
           </button>
-        ))}
-      </div>
-
-      <div className="filter-surface">
-        <div className="search-field">
-          <FiSearch className="h-4 w-4" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ค้นหา รหัสแม่พิมพ์, รายละเอียด, หรือ request code..."
-          />
         </div>
       </div>
+
+      <div className="db-quick-stats-row" style={{ marginBottom: '1.5rem' }}>
+        <div className="db-glass-card" style={{ width: '100%' }}>
+          <div className="db-nums-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+            {quickNums.map((item) => (
+              <div className="db-num-item" key={item.label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div className="db-num-value">{item.value}</div>
+                    <div className="db-num-label">{item.label}</div>
+                  </div>
+                  <svg className="db-sparkline" viewBox="0 0 60 28" fill="none">
+                    <polyline points={item.sparkPoints} stroke={item.color} strokeWidth="2" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="search-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+          <div className="search-input-wrapper" style={{ flex: 1, minWidth: '250px' }}>
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหา รหัสแม่พิมพ์, รายละเอียด, หรือ request code..."
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+            {maintenanceTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`btn btn-sm ${tab === t.key ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '0.3rem 0.75rem', borderRadius: '100px' }}
+              >
+                <t.icon className="mr-1 h-3 w-3 inline" /> {t.label} ({counts[t.key]})
+              </button>
+            ))}
+          </div>
+        </div>
 
       {loading ? <SkeletonList count={4} /> : (
-        <div className="space-y-6">
+        <div style={{ padding: '1.5rem', backgroundColor: 'var(--card-bg)' }}>
           {(() => {
             if (filtered.length === 0) {
               return (
-                <div className="empty-state-card">
-                  <FiTool className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-                  <p className="text-base font-semibold text-slate-900">ไม่พบรายการงานแจ้งซ่อม</p>
-                  <p className="mt-2 text-sm text-slate-500">ลองปรับคำค้นหาหรือเปิดงานแจ้งซ่อมใหม่เพื่อเริ่มต้น</p>
+                <div className="empty-state">
+                  <div className="empty-state-icon text-slate-300">
+                    <FiTool className="h-8 w-8 mx-auto" />
+                  </div>
+                  <div className="empty-state-title">ไม่พบรายการงานแจ้งซ่อม</div>
+                  <p className="mt-2 text-sm text-slate-500 text-center">ลองปรับคำค้นหาหรือเปิดงานแจ้งซ่อมใหม่เพื่อเริ่มต้น</p>
                 </div>
               );
             }
@@ -343,21 +351,25 @@ const Maintenance = () => {
 
             // 3) Render each group
             return sortedCustomers.map(customer => (
-              <section key={customer}>
-                <div className="group-header pl-1">
-                  <div className="group-avatar">
+              <section key={customer} style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '0.75rem', borderBottom: '2px solid var(--border-color)', marginBottom: '1rem' }}>
+                  <div style={{ 
+                    width: '40px', height: '40px', borderRadius: '12px', 
+                    background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem'
+                  }}>
                     {customer !== 'ไม่ระบุลูกค้า' ? customer.charAt(0).toUpperCase() : '?'}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-bold tracking-tight text-slate-950">{customer}</h2>
-                    <p className="mt-1 text-sm text-slate-500">กลุ่มงานแจ้งซ่อมของลูกค้ารายนี้</p>
+                  <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-color)', margin: 0 }}>{customer}</h2>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>กลุ่มงานแจ้งซ่อมของลูกค้ารายนี้</p>
                   </div>
-                  <span className="group-chip">
+                  <span className="badge badge-neutral" style={{ fontSize: '0.8rem' }}>
                     {groups[customer].length} งาน
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                   {groups[customer].map((item) => {
                     const s = statusMap[item.status] || statusMap.pending;
                     const images = item.images || [];
@@ -365,41 +377,57 @@ const Maintenance = () => {
                       <div
                         key={item.id}
                         onClick={() => openUpdateModal(item)}
-                        className="record-card ml-3"
+                        style={{
+                          background: 'var(--surface-base)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '16px',
+                          padding: '1.25rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: 'var(--shadow-sm)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                          e.currentTarget.style.borderColor = 'var(--border-color)';
+                        }}
                       >
                         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                           <div className="min-w-0 flex-1">
-                            <div className="record-card-kickers">
-                              <span className="record-card-id">{item.requestCode}</span>
-                              <span className="record-card-divider"></span>
-                              <span className="text-sm font-bold tracking-tight text-slate-900">{item.mold?.moldCode || '-'}</span>
-                              <span className={`status-pill ${s.tone}`}>
-                                {s.label}
-                              </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>{item.requestCode}</span>
+                              <span style={{ color: 'var(--border-color)' }}>|</span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-color)' }}>{item.mold?.moldCode || '-'}</span>
+                              <span className={`badge ${s.tone}`}>{s.label}</span>
                             </div>
 
-                            <h3 className="record-card-title">{item.mold_name || item.moldName || item.mold?.name || '-'}</h3>
-                            <p className="record-card-description line-clamp-2">{item.description}</p>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-color)', margin: '0 0 0.5rem 0' }}>{item.mold_name || item.moldName || item.mold?.name || '-'}</h3>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '0.75rem' }}>{item.description}</p>
 
-                            <div className="record-card-meta">
-                              <span><FiTool className="h-4 w-4" /> {typeMap[item.type] || item.type}</span>
-                              <span><FiUser className="h-4 w-4" /> {item.assignedTo ? `${item.assignedTo.firstName}` : 'ยังไม่มอบหมาย'}</span>
-                              <span><FiCalendar className="h-4 w-4" /> {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : '-'}</span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><FiTool /> {typeMap[item.type] || item.type}</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><FiUser /> {item.assignedTo ? `${item.assignedTo.firstName}` : 'ยังไม่มอบหมาย'}</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><FiCalendar /> {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : '-'}</span>
                             </div>
 
                             {images.length > 0 && (
-                              <div className="record-card-thumbs">
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                                 {images.slice(0, 4).map((img, i) => (
                                   <img
                                     key={i}
                                     src={getImageUrl(img)}
                                     alt=""
-                                    className="record-card-thumb"
+                                    style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-color)' }}
                                     onClick={(e) => { e.stopPropagation(); setLightboxImg(getImageUrl(img)); }}
                                   />
                                 ))}
                                 {images.length > 4 && (
-                                  <div className="record-card-more">
+                                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>
                                     +{images.length - 4}
                                   </div>
                                 )}
@@ -408,8 +436,11 @@ const Maintenance = () => {
                           </div>
 
                           <div className="flex items-center justify-end">
-                            <div className="record-card-cta">
-                              <FiArrowLeft className="h-5 w-5 rotate-180" />
+                            <div style={{ 
+                              width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary)', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' 
+                            }}>
+                              <FiArrowLeft className="h-4 w-4 rotate-180" />
                             </div>
                           </div>
                         </div>
@@ -422,6 +453,7 @@ const Maintenance = () => {
           })()}
         </div>
       )}
+      </div>
 
       {/* ===== Create Maintenance Modal ===== */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="แจ้งงานแจ้งซ่อม" size="md">

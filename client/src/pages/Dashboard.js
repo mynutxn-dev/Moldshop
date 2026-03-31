@@ -1,33 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiBox, FiTool, FiClipboard, FiAlertTriangle, FiCheckCircle, FiClock, FiArrowRight } from 'react-icons/fi';
 import { dashboardAPI } from '../services/api';
 import { SkeletonDashboard } from '../components/Skeleton';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const statusMap = {
-  pending: { label: 'รอดำเนินการ', tone: 'status-pill-pending' },
-  in_progress: { label: 'กำลังดำเนินการ', tone: 'status-pill-progress' },
-  completed: { label: 'เสร็จสิ้น', tone: 'status-pill-completed' },
-  cancelled: { label: 'ยกเลิก', tone: 'status-pill-cancelled' },
+  pending: { label: 'รอดำเนินการ', tone: 'badge-warning' },
+  in_progress: { label: 'กำลังดำเนินการ', tone: 'badge-info' },
+  completed: { label: 'เสร็จสิ้น', tone: 'badge-success' },
+  cancelled: { label: 'ยกเลิก', tone: 'badge-danger' },
 };
 
-const StatCard = ({ title, value, icon: Icon, tone = 'primary', subtitle }) => (
-  <div className={`metric-card metric-card--${tone} animate-fade-in-up`}>
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">{title}</p>
-        <p className="mt-2 text-4xl font-bold tracking-tight text-slate-950">{value}</p>
-        {subtitle && <p className="mt-2 text-sm font-medium text-slate-500">{subtitle}</p>}
-      </div>
-      <div className="metric-card-icon">
-        <Icon className="h-6 w-6" />
-      </div>
-    </div>
-  </div>
-);
-
-const Dashboard = () => {
+export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [recentMT, setRecentMT] = useState([]);
   const [recentWO, setRecentWO] = useState([]);
@@ -59,221 +43,236 @@ const Dashboard = () => {
   const wo = stats?.workOrders || {};
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const totalPending = (mt.pending || 0) + (wo.pending || 0);
+
   const pieData = [
     { name: 'พร้อมใช้งาน', value: m.active || 0, color: '#2563eb' },
-    { name: 'ใช้งานอยู่', value: m.inUse || 0, color: '#0f172a' },
+    { name: 'ใช้งานอยู่', value: m.inUse || 0, color: '#6366f1' },
     { name: 'กำลังซ่อม', value: m.maintenance || 0, color: '#14b8a6' },
     { name: 'ชำรุด', value: m.damaged || 0, color: '#f59e0b' },
   ].filter((item) => item.value > 0);
-  const todayLabel = new Date().toLocaleDateString('th-TH', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+
+  const quickNums = [
+    { value: m.total || 0, label: 'แม่พิมพ์ทั้งหมด', color: '#4a7cff', sparkPoints: '0,20 10,16 20,18 30,14 40,16 50,12 60,10' },
+    { value: m.active || 0, label: 'พร้อมใช้งาน', color: '#22d3b0', sparkPoints: '0,22 10,18 20,20 30,10 40,12 50,6 60,4' },
+    { value: mt.total || 0, label: 'งานแจ้งซ่อมรวม', color: '#a78bfa', sparkPoints: '0,20 10,22 20,18 30,20 40,15 50,18 60,14' },
+    { value: wo.total || 0, label: 'New Model', color: '#f59e0b', sparkPoints: '0,22 10,14 20,18 30,12 40,16 50,10 60,14' },
+  ];
+
+  const statusCards = [
+    {
+      key: 'mt-pending',
+      num: mt.pending || 0,
+      label: 'รอดำเนินการ (ซ่อม)',
+      iconClass: 'icon-orange',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      chart: (
+        <svg className="db-mini-chart" viewBox="0 0 180 50" fill="none">
+          <defs><linearGradient id="g-orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.3"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></linearGradient></defs>
+          <polygon points="0,40 30,35 60,38 90,25 120,30 150,18 180,22 180,50 0,50" fill="url(#g-orange)" />
+          <polyline points="0,40 30,35 60,38 90,25 120,30 150,18 180,22" stroke="#f59e0b" strokeWidth="2.5" strokeLinejoin="round" />
+        </svg>
+      )
+    },
+    {
+      key: 'wo-progress',
+      num: wo.inProgress || 0,
+      label: 'กำลังดำเนินการ (New Model)',
+      iconClass: 'icon-blue',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+      chart: (
+        <svg className="db-mini-chart" viewBox="0 0 180 50" fill="none">
+           <rect x="10" y="30" width="18" height="20" rx="3" fill="#c7d8ff" />
+           <rect x="38" y="20" width="18" height="30" rx="3" fill="#a5beff" />
+           <rect x="66" y="35" width="18" height="15" rx="3" fill="#c7d8ff" />
+           <rect x="94" y="15" width="18" height="35" rx="3" fill="#4a7cff" />
+           <rect x="122" y="25" width="18" height="25" rx="3" fill="#c7d8ff" />
+           <rect x="150" y="10" width="18" height="40" rx="3" fill="#7aa0ff" />
+        </svg>
+      )
+    },
+    {
+      key: 'm-damaged',
+      num: m.damaged || 0,
+      label: 'แม่พิมพ์ชำรุด',
+      iconClass: 'icon-purple',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+      chart: (
+        <svg className="db-mini-chart" viewBox="0 0 180 50" fill="none">
+          <defs><linearGradient id="g-purple" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a78bfa" stopOpacity="0.35"/><stop offset="100%" stopColor="#a78bfa" stopOpacity="0"/></linearGradient></defs>
+          <polygon points="0,40 40,38 80,36 100,34 140,30 180,20 180,50 0,50" fill="url(#g-purple)" />
+          <polyline points="0,40 40,38 80,36 100,34 140,30 180,20" stroke="#a78bfa" strokeWidth="2.5" strokeLinejoin="round" />
+        </svg>
+      )
+    }
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="dashboard-hero animate-fade-in-up">
-        <div className="dashboard-hero-grid">
+    <div className="db-wrapper">
+      <div className="db-section-title">ภาพรวมระบบ (Overview)</div>
+      
+      {/* ── QUICK STATS ROW ─────────────────────────────────── */}
+      <div className="db-quick-stats-row">
+        <div className="db-glass-card">
+          <div className="db-nums-grid">
+            {quickNums.map((item) => (
+              <div className="db-num-item" key={item.label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div className="db-num-value">{item.value}</div>
+                    <div className="db-num-label">{item.label}</div>
+                  </div>
+                  <svg className="db-sparkline" viewBox="0 0 60 28" fill="none">
+                    <polyline points={item.sparkPoints} stroke={item.color} strokeWidth="2" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Welcome Card */}
+        <div className="db-welcome-card">
           <div>
-            <span className="hero-badge">Moldshop Command Center</span>
-            <h1 className="hero-title">ติดตามวงจรแม่พิมพ์ งานซ่อม และ New Model จากมุมมองเดียว</h1>
-            <p className="hero-subtitle">
-              สวัสดี {user.firstName || 'ทีมงาน'} • วันนี้ {todayLabel} คุณสามารถเห็นแม่พิมพ์ที่พร้อมใช้งาน งานที่กำลังรอ และรายการที่ต้องตัดสินใจได้ทันที
-            </p>
-            <div className="hero-action-row">
-              <Link to="/maintenance" className="btn-primary">เปิดงานแจ้งซ่อม</Link>
-              <Link to="/work-orders" className="hero-button-secondary">ดู New Model</Link>
+            <div className="db-welcome-text">
+              <h2>สวัสดี,<br />{user?.firstName || user?.username || 'ผู้ใช้งาน'}</h2>
+              <p className="db-welcome-role">{user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}</p>
+            </div>
+            <div className="db-welcome-btns" style={{ marginTop: '1rem' }}>
+              <Link to="/maintenance" className="db-btn-blue">เปิดงานแจ้งซ่อม</Link>
+              <Link to="/work-orders" className="db-btn-teal">ตรวจสอบ New Model</Link>
             </div>
           </div>
-          <div className="hero-metrics">
-            <div className="hero-metric">
-              <div className="hero-metric-top">
-                <span>แม่พิมพ์พร้อมใช้งาน</span>
-                <FiCheckCircle className="h-5 w-5" />
-              </div>
-              <strong>{m.active || 0}</strong>
-              <p>จากทั้งหมด {m.total || 0} ชุดในระบบ</p>
-            </div>
-            <div className="hero-metric">
-              <div className="hero-metric-top">
-                <span>งานที่รอดำเนินการ</span>
-                <FiClock className="h-5 w-5" />
-              </div>
-              <strong>{totalPending}</strong>
-              <p>รวมงานแจ้งซ่อมและ New Model ที่ยังไม่ปิด</p>
-            </div>
-            <div className="hero-metric">
-              <div className="hero-metric-top">
-                <span>แม่พิมพ์ที่ต้องติดตาม</span>
-                <FiAlertTriangle className="h-5 w-5" />
-              </div>
-              <strong>{(m.maintenance || 0) + (m.damaged || 0)}</strong>
-              <p>กำลังซ่อม {m.maintenance || 0} • ชำรุด {m.damaged || 0}</p>
-            </div>
-          </div>
+          {/* SVG Illustration Placeholder */}
+          <svg width="110" height="90" viewBox="0 0 110 90" fill="none" className="db-welcome-illus">
+            <rect x="10" y="65" width="90" height="6" rx="3" fill="#c7d8f8" />
+            <rect x="30" y="38" width="36" height="26" rx="4" fill="#7baaf7" />
+            <rect x="33" y="41" width="30" height="18" rx="2" fill="#b8d0ff" />
+            <circle cx="72" cy="38" r="8" fill="#f4c2a1" />
+            <rect x="64" y="46" width="16" height="20" rx="5" fill="#4a7cff" />
+            <rect x="76" y="22" width="28" height="14" rx="6" fill="#e0eaff" />
+          </svg>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="แม่พิมพ์ทั้งหมด" value={m.total || 0} icon={FiBox} tone="primary" subtitle={`พร้อมใช้งาน ${m.active || 0} ชุด`} />
-        <StatCard title="รองานแจ้งซ่อม" value={mt.total || 0} icon={FiTool} tone="warning" subtitle={`รอดำเนินการ ${mt.pending || 0} รายการ`} />
-        <StatCard title="New Model" value={wo.total || 0} icon={FiClipboard} tone="success" subtitle={`กำลังดำเนินการ ${wo.inProgress || 0}`} />
-        <StatCard title="แม่พิมพ์ชำรุด" value={m.damaged || 0} icon={FiAlertTriangle} tone="danger" subtitle="ต้องดำเนินการ" />
+      {/* ── MAIN STATUS GRID ─────────────────────────────────── */}
+      <div className="db-section-title" style={{ marginTop: '1.5rem' }}>รายการที่ต้องติดตาม (Action Required)</div>
+      <div className="db-status-grid">
+        {statusCards.map((card, i) => (
+          <div className="db-status-card" key={card.key} style={{ animationDelay: `${i * 0.05}s` }}>
+            <div className="db-status-card-header">
+              <div>
+                <div className="db-status-num">{card.num}</div>
+                <div className="db-status-label">{card.label}</div>
+              </div>
+              <div className={`db-status-icon ${card.iconClass}`}>
+                {card.icon}
+              </div>
+            </div>
+            {card.chart}
+          </div>
+        ))}
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {/* Recent Maintenance */}
-        <div className="panel-card">
-          <div className="panel-header">
+      {/* ── CHARTS ───────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+        <div className="card">
+          <div className="card-header">
             <div>
-              <h3 className="text-base font-semibold text-slate-950">งานแจ้งซ่อมล่าสุด</h3>
-              <p className="mt-1 text-sm text-slate-500">เรียงจากรายการล่าสุดที่ทีมต้องติดตาม</p>
+              <h2 className="card-title">สถานะแม่พิมพ์</h2>
+              <p className="card-subtitle">สัดส่วนความพร้อมใช้งาน</p>
             </div>
-            <Link to="/maintenance" className="panel-link">
-              ดูทั้งหมด <FiArrowRight className="h-4 w-4" />
-            </Link>
           </div>
-          <div className="list-stack">
-            {loadingMT ? <div className="list-row"><p className="empty-copy">กำลังดึงข้อมูล...</p></div> : recentMT.map((item) => {
-              const s = statusMap[item.status] || statusMap.pending;
-              return (
-                <div key={item.id} className="list-row">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-950">{item.mold?.moldCode || item.requestCode}</p>
-                    <p className="mt-1 text-sm text-slate-500">{item.description}</p>
-                    <div className="list-meta">
-                      <span>แจ้ง: {item.reportDate ? new Date(item.reportDate).toLocaleDateString('th-TH') : new Date(item.createdAt).toLocaleDateString('th-TH')}</span>
-                      <span>ผลิต: {item.productionDate ? new Date(item.productionDate).toLocaleDateString('th-TH') : '-'}</span>
-                    </div>
-                  </div>
-                  <span className={`status-pill ${s.tone}`}>{s.label}</span>
-                </div>
-              );
-            })}
-            {!loadingMT && recentMT.length === 0 && <div className="list-row"><p className="empty-copy">ไม่มีรายการงานแจ้งซ่อมล่าสุด</p></div>}
+          <div style={{ height: '240px', padding: '1rem' }}>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={4} dataKey="value">
+                    {pieData.map((item) => <Cell key={item.name} fill={item.color} stroke="none" />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '18px', border: '1px solid rgba(148, 163, 184, 0.24)', boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <p className="text-muted text-center" style={{ marginTop: '5rem' }}>ไม่มีข้อมูล</p>}
           </div>
         </div>
-
-        {/* Recent Work Orders */}
-        <div className="panel-card">
-          <div className="panel-header">
+        
+        <div className="card">
+          <div className="card-header">
             <div>
-              <h3 className="text-base font-semibold text-slate-950">New Model ล่าสุด</h3>
-              <p className="mt-1 text-sm text-slate-500">ติดตามลำดับงานที่กำลังขยับอยู่ในระบบ</p>
+              <h2 className="card-title">ปริมาณงาน</h2>
+              <p className="card-subtitle">เปรียบเทียบตามสถานะ</p>
             </div>
-            <Link to="/work-orders" className="panel-link">
-              ดูทั้งหมด <FiArrowRight className="h-4 w-4" />
-            </Link>
           </div>
-          <div className="list-stack">
-            {loadingWO ? <div className="list-row"><p className="empty-copy">กำลังดึงข้อมูล...</p></div> : recentWO.map((item) => {
-              const s = statusMap[item.status] || statusMap.pending;
-              return (
-                <div key={item.id} className="list-row">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-950">{item.orderCode}</p>
-                    <p className="mt-1 text-sm text-slate-500">{item.title} {item.assignedTo ? `— ${item.assignedTo.firstName}` : ''}</p>
-                  </div>
-                  <span className={`status-pill ${s.tone}`}>{s.label}</span>
-                </div>
-              );
-            })}
-            {!loadingWO && recentWO.length === 0 && <div className="list-row"><p className="empty-copy">ไม่มีรายการ New Model ล่าสุด</p></div>}
+          <div style={{ height: '240px', padding: '1rem' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[
+                { name: 'รอ', mt: mt.pending || 0, wo: wo.pending || 0 },
+                { name: 'ดำเนินการ', mt: mt.inProgress || 0, wo: wo.inProgress || 0 },
+                { name: 'เสร็จ', mt: mt.completed || 0, wo: wo.completed || 0 },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} />
+                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }} />
+                <Bar dataKey="mt" name="ซ่อม" fill="#4a7cff" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="wo" name="New Model" fill="#22d3b0" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 animate-fade-in-up">
-        {/* Mold Status Donut Chart */}
-        <div className="panel-card p-5 md:p-6">
-          <div className="mb-5">
-            <h3 className="text-base font-semibold text-slate-950">สถานะแม่พิมพ์</h3>
-            <p className="mt-1 text-sm text-slate-500">ภาพรวมความพร้อมของแม่พิมพ์ในระบบ</p>
+      {/* ── TABLES ───────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">งานแจ้งซ่อมหน้าใหม่</h2>
+              <p className="card-subtitle">รายการที่ต้องติดตาม</p>
+            </div>
+            <Link to="/maintenance" className="btn btn-secondary btn-sm">รับงานทั้งหมด</Link>
           </div>
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-center">
-            <div className="mx-auto h-56 w-56 xl:mx-0">
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {pieData.map((item) => <Cell key={item.name} fill={item.color} stroke="none" />)}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => `${value} ชุด`}
-                      contentStyle={{
-                        borderRadius: '18px',
-                        border: '1px solid rgba(148, 163, 184, 0.24)',
-                        boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400">
-                  ไม่มีข้อมูลสถานะ
-                </div>
-              )}
-            </div>
-            <div className="flex-1 space-y-3">
-              {pieData.length > 0 ? pieData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }}></span>
-                    <span className="text-sm font-medium text-slate-600">{item.name}</span>
-                  </div>
-                  <span className="text-lg font-bold text-slate-950">{item.value}</span>
-                </div>
-              )) : <p className="empty-copy">ยังไม่มีข้อมูลแม่พิมพ์ให้สรุปในกราฟ</p>}
-            </div>
+          <div className="table-container">
+            <table className="table">
+              <thead><tr><th>รหัส</th><th>แม่พิมพ์</th><th>สถานะ</th></tr></thead>
+              <tbody>
+                {recentMT.length > 0 ? recentMT.slice(0, 5).map(item => (
+                  <tr key={item.id}>
+                    <td>{item.requestCode}</td>
+                    <td>{item.mold?.moldCode || '-'}</td>
+                    <td><span className={`badge ${statusMap[item.status]?.tone || 'badge-info'}`}>{statusMap[item.status]?.label || item.status}</span></td>
+                  </tr>
+                )) : <tr><td colSpan="3" className="text-center text-muted">ไม่มีคำร้อง</td></tr>}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Maintenance & Work Order Bar Chart */}
-        <div className="panel-card p-5 md:p-6">
-          <div className="mb-5">
-            <h3 className="text-base font-semibold text-slate-950">สรุปงานตามสถานะ</h3>
-            <p className="mt-1 text-sm text-slate-500">เปรียบเทียบปริมาณงานแจ้งซ่อมและ New Model ในแต่ละสถานะ</p>
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">New Model ที่ดำเนินการ</h2>
+              <p className="card-subtitle">กิจกรรมสร้างแม่พิมพ์</p>
+            </div>
+            <Link to="/work-orders" className="btn btn-secondary btn-sm">อัปเดตงาน</Link>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={[
-              { name: 'รอ', maintenance: mt.pending || 0, workOrder: wo.pending || 0 },
-              { name: 'กำลังทำ', maintenance: mt.inProgress || 0, workOrder: wo.inProgress || 0 },
-              { name: 'เสร็จ', maintenance: mt.completed || 0, workOrder: wo.completed || 0 },
-            ]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.22)" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: '18px',
-                  border: '1px solid rgba(148, 163, 184, 0.24)',
-                  boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)'
-                }}
-              />
-              <Bar dataKey="maintenance" name="งานแจ้งซ่อม" fill="#2563eb" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="workOrder" name="New Model" fill="#14b8a6" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="chart-legend mt-4">
-            <span><span className="chart-legend-dot" style={{ backgroundColor: '#2563eb' }}></span>งานแจ้งซ่อม</span>
-            <span><span className="chart-legend-dot" style={{ backgroundColor: '#14b8a6' }}></span>New Model</span>
+          <div className="table-container">
+            <table className="table">
+              <thead><tr><th>รหัส</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+              <tbody>
+                {recentWO.length > 0 ? recentWO.slice(0, 5).map(item => (
+                  <tr key={item.id}>
+                    <td>{item.orderCode}</td>
+                    <td>{item.title}</td>
+                    <td><span className={`badge ${statusMap[item.status]?.tone || 'badge-info'}`}>{statusMap[item.status]?.label || item.status}</span></td>
+                  </tr>
+                )) : <tr><td colSpan="3" className="text-center text-muted">ไม่มีคำสั่งทำแม่พิมพ์ใหม่</td></tr>}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
+
     </div>
   );
-};
-
-export default Dashboard;
+}
