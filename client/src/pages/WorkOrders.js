@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiSearch, FiClipboard, FiCalendar, FiTool, FiCheck, FiX, FiEdit2, FiCamera } from 'react-icons/fi';
+import { FiPlus, FiClipboard, FiCalendar, FiTool, FiCheck, FiX, FiEdit2, FiCamera } from 'react-icons/fi';
 import { workOrdersAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -9,6 +9,7 @@ import imageCompression from 'browser-image-compression';
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
 const getImageUrl = (img) => img?.startsWith('http') ? img : `${API_BASE}${img}`;
+const MAX_WORK_ORDER_IMAGES = 10;
 
 // Helper: Compress image before upload
 const compressImage = async (file) => {
@@ -172,7 +173,13 @@ const WorkOrders = () => {
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
-    setFormImages(prev => [...prev, ...files].slice(0, 5)); // Limit to 5 images
+    setFormImages(prev => {
+      const nextImages = [...prev, ...files];
+      if (nextImages.length > MAX_WORK_ORDER_IMAGES) {
+        toast.error(`แนบรูปภาพได้สูงสุด ${MAX_WORK_ORDER_IMAGES} รูป`);
+      }
+      return nextImages.slice(0, MAX_WORK_ORDER_IMAGES);
+    });
   };
 
   const removeFormImage = (index) => {
@@ -571,7 +578,7 @@ const WorkOrders = () => {
 
           {/* Image Upload for New WO */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพประกอบ (สูงสุด 5 รูป)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพประกอบ (สูงสุด 10 รูป)</label>
             {formImages.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {formImages.map((file, idx) => (
@@ -592,7 +599,7 @@ const WorkOrders = () => {
                 ))}
               </div>
             )}
-            {formImages.length < 5 && (
+            {formImages.length < MAX_WORK_ORDER_IMAGES && (
               <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors w-fit">
                 <FiCamera className="h-4 w-4 text-gray-400" />
                 <span className="text-xs text-gray-500">แนบรูปภาพ</span>

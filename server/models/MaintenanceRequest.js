@@ -15,11 +15,11 @@ const MaintenanceRequest = sequelize.define('MaintenanceRequest', {
   },
   moldId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'mold_id',
   },
   type: {
-    type: DataTypes.ENUM('repair', 'pm', 'inspection', 'cleaning'),
+    type: DataTypes.ENUM('repair', 'pm', 'inspection', 'cleaning', 'other'),
     allowNull: false,
   },
   description: {

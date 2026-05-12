@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiSearch, FiTool, FiClock, FiCheckCircle, FiAlertCircle, FiCalendar, FiCamera, FiX, FiEdit2, FiUser, FiArrowLeft } from 'react-icons/fi';
+import { FiPlus, FiTool, FiClock, FiCheckCircle, FiAlertCircle, FiCalendar, FiCamera, FiX, FiEdit2, FiUser, FiArrowLeft } from 'react-icons/fi';
 import { maintenanceAPI, moldsAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -26,7 +26,7 @@ const statusMap = {
   completed: { label: 'เสร็จสิ้น', tone: 'status-pill-completed' },
   cancelled: { label: 'ยกเลิก', tone: 'status-pill-cancelled' },
 };
-const typeMap = { repair: 'ซ่อมแซม', pm: 'PM', inspection: 'ตรวจสอบ', cleaning: 'ทำความสะอาด' };
+const typeMap = { repair: 'ซ่อมแซม', pm: 'PM', inspection: 'ตรวจสอบ', cleaning: 'ทำความสะอาด', other: 'อื่นๆ' };
 const maintenanceTabs = [
   { key: 'all', label: 'ทั้งหมด', icon: FiTool },
   { key: 'pending', label: 'รอดำเนินการ', icon: FiAlertCircle },
@@ -85,7 +85,7 @@ const Maintenance = () => {
   const [showModal, setShowModal] = useState(false);
   const [moldOptions, setMoldOptions] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
-  const emptyForm = { moldId: '', type: 'repair', description: '', reportDate: new Date().toISOString().split('T')[0], productionDate: '' };
+  const emptyForm = { moldId: '', type: 'repair', otherTopic: '', description: '', reportDate: new Date().toISOString().split('T')[0], productionDate: '' };
   const [form, setForm] = useState(emptyForm);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
@@ -123,16 +123,25 @@ const Maintenance = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.moldId || !form.description) {
-      toast.error('กรุณาเลือกแม่พิมพ์และกรอกรายละเอียด');
+    if (form.type !== 'other' && !form.moldId) {
+      toast.error('กรุณาเลือกแม่พิมพ์');
+      return;
+    }
+    if (form.type === 'other' && !form.otherTopic.trim()) {
+      toast.error('กรุณากรอกหัวข้ออื่นๆ');
+      return;
+    }
+    if (!form.description.trim()) {
+      toast.error('กรุณากรอกรายละเอียด');
       return;
     }
     setSaving(true);
     try {
       const formData = new FormData();
-      formData.append('moldId', form.moldId);
+      if (form.moldId) formData.append('moldId', form.moldId);
       formData.append('type', form.type);
-      formData.append('description', form.description);
+      formData.append('description', form.description.trim());
+      if (form.type === 'other') formData.append('notes', form.otherTopic.trim());
       if (form.reportDate) formData.append('reportDate', form.reportDate);
       if (form.productionDate) formData.append('productionDate', form.productionDate);
 
@@ -160,7 +169,7 @@ const Maintenance = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updatingItem, setUpdatingItem] = useState(null);
   const [userOptions, setUserOptions] = useState([]);
-  const [updateForm, setUpdateForm] = useState({ status: '', assignedToId: '', description: '', type: 'repair', reportDate: '', productionDate: '' });
+  const [updateForm, setUpdateForm] = useState({ status: '', assignedToId: '', description: '', type: 'repair', notes: '', reportDate: '', productionDate: '' });
   const [updating, setUpdating] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -172,6 +181,7 @@ const Maintenance = () => {
       assignedToId: item.assignedToId || '',
       description: item.description || '',
       type: item.type || 'repair',
+      notes: item.notes || '',
       reportDate: item.reportDate || '',
       productionDate: item.productionDate || '',
     });
@@ -187,6 +197,7 @@ const Maintenance = () => {
         status: updateForm.status,
         description: updateForm.description,
         type: updateForm.type,
+        notes: updateForm.type === 'other' ? updateForm.notes : null,
         reportDate: updateForm.reportDate || null,
         productionDate: updateForm.productionDate || null,
       };
@@ -336,7 +347,7 @@ const Maintenance = () => {
 
             // 1) Group items by customer
             const groups = filtered.reduce((acc, item) => {
-              const cust = item.mold?.customer ? item.mold.customer.trim() : 'ไม่ระบุลูกค้า';
+              const cust = item.mold?.customer ? item.mold.customer.trim() : 'งานทั่วไป';
               if (!acc[cust]) acc[cust] = [];
               acc[cust].push(item);
               return acc;
@@ -344,8 +355,8 @@ const Maintenance = () => {
 
             // 2) Sort group keys A-Z (Put "ไม่ระบุลูกค้า" at the end)
             const sortedCustomers = Object.keys(groups).sort((a, b) => {
-              if (a === 'ไม่ระบุลูกค้า') return 1;
-              if (b === 'ไม่ระบุลูกค้า') return -1;
+              if (a === 'งานทั่วไป') return 1;
+              if (b === 'งานทั่วไป') return -1;
               return a.localeCompare(b);
             });
 
@@ -358,7 +369,7 @@ const Maintenance = () => {
                     background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem'
                   }}>
-                    {customer !== 'ไม่ระบุลูกค้า' ? customer.charAt(0).toUpperCase() : '?'}
+                    {customer !== 'งานทั่วไป' ? customer.charAt(0).toUpperCase() : 'O'}
                   </div>
                   <div style={{ flex: 1 }}>
                     <h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-color)', margin: 0 }}>{customer}</h2>
@@ -402,11 +413,11 @@ const Maintenance = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                               <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '0.2rem 0.5rem', borderRadius: '6px' }}>{item.requestCode}</span>
                               <span style={{ color: 'var(--border-color)' }}>|</span>
-                              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-color)' }}>{item.mold?.moldCode || '-'}</span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-color)' }}>{item.mold?.moldCode || (item.type === 'other' ? 'ไม่ระบุแม่พิมพ์' : '-')}</span>
                               <span className={`badge ${s.tone}`}>{s.label}</span>
                             </div>
 
-                            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-color)', margin: '0 0 0.5rem 0' }}>{item.mold_name || item.moldName || item.mold?.name || '-'}</h3>
+                            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-color)', margin: '0 0 0.5rem 0' }}>{item.mold_name || item.moldName || item.mold?.name || item.notes || 'งานทั่วไป'}</h3>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '0.75rem' }}>{item.description}</p>
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -466,6 +477,7 @@ const Maintenance = () => {
           const filteredMolds = selectedCustomer
             ? moldOptions.filter(m => m.customer === selectedCustomer)
             : moldOptions.sort((a, b) => a.moldCode.localeCompare(b.moldCode));
+          const isOtherType = form.type === 'other';
 
           return (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -488,13 +500,13 @@ const Maintenance = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">แม่พิมพ์ *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isOtherType ? 'แม่พิมพ์ (ไม่บังคับ)' : 'แม่พิมพ์ *'}</label>
                 <Select
                   options={filteredMolds.map(m => ({ value: m.id, label: `${m.moldCode} - ${m.name}` }))}
                   value={form.moldId ? { value: form.moldId, label: filteredMolds.find(m => m.id === form.moldId)?.moldCode + ' - ' + filteredMolds.find(m => m.id === form.moldId)?.name } : null}
                   onChange={(selected) => handleFormChange({ target: { name: 'moldId', value: selected ? selected.value : '' } })}
                   isClearable
-                  placeholder={selectedCustomer ? `เลือกแม่พิมพ์ของ ${selectedCustomer}...` : 'เลือกแม่พิมพ์...'}
+                  placeholder={isOtherType ? 'ไม่เลือกแม่พิมพ์ได้สำหรับหัวข้ออื่นๆ' : (selectedCustomer ? `เลือกแม่พิมพ์ของ ${selectedCustomer}...` : 'เลือกแม่พิมพ์...')}
                   className="text-sm"
                   styles={{
                     control: (base) => ({ ...base, borderColor: '#d1d5db', borderRadius: '0.5rem', padding: '2px 0' }),
@@ -509,6 +521,7 @@ const Maintenance = () => {
                     <option value="pm">PM (บำรุงรักษา)</option>
                     <option value="inspection">ตรวจสอบ</option>
                     <option value="cleaning">ทำความสะอาด</option>
+                    <option value="other">อื่นๆ</option>
                   </select>
                 </div>
                 <div>
@@ -520,6 +533,19 @@ const Maintenance = () => {
                   <input type="date" name="productionDate" value={form.productionDate} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
+              {isOtherType && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">หัวข้ออื่นๆ *</label>
+                  <input
+                    type="text"
+                    name="otherTopic"
+                    value={form.otherTopic}
+                    onChange={handleFormChange}
+                    placeholder="เช่น ซ่อมเครื่องมือ, ซ่อมโต๊ะงาน, ซ่อมอุปกรณ์"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด *</label>
                 <textarea name="description" value={form.description} onChange={handleFormChange} rows="3" placeholder="อธิบายอาการและสิ่งที่ต้องการซ่อม..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -573,7 +599,7 @@ const Maintenance = () => {
             <div className="bg-gray-50 rounded-lg p-3 text-sm flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-900">{updatingItem.requestCode}</p>
-                <p className="text-gray-600 mt-0.5">{updatingItem.mold?.moldCode} — {updatingItem.mold?.name}</p>
+                <p className="text-gray-600 mt-0.5">{updatingItem.mold ? `${updatingItem.mold.moldCode} — ${updatingItem.mold.name}` : (updatingItem.notes || 'งานทั่วไป')}</p>
               </div>
               <FiEdit2 className="h-4 w-4 text-gray-400" />
             </div>
@@ -596,6 +622,7 @@ const Maintenance = () => {
                   <option value="pm">PM</option>
                   <option value="inspection">ตรวจสอบ</option>
                   <option value="cleaning">ทำความสะอาด</option>
+                  <option value="other">อื่นๆ</option>
                 </select>
               </div>
               <div>
@@ -607,6 +634,17 @@ const Maintenance = () => {
                 <input type="date" value={updateForm.productionDate} onChange={(e) => setUpdateForm({ ...updateForm, productionDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
+            {updateForm.type === 'other' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">หัวข้ออื่นๆ</label>
+                <input
+                  type="text"
+                  value={updateForm.notes}
+                  onChange={(e) => setUpdateForm({ ...updateForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
 
             {/* Existing images */}
             {updatingItem.images && updatingItem.images.length > 0 && (

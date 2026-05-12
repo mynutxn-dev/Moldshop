@@ -6,6 +6,7 @@ const { auth, technicianUp } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { uploadImage, deleteImage } = require('../config/supabaseStorage');
 const router = express.Router();
+const MAX_WORK_ORDER_IMAGES = 10;
 
 // Multer config
 const upload = multer({
@@ -84,7 +85,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/work-orders
-router.post('/', auth, technicianUp, upload.array('images', 5), async (req, res) => {
+router.post('/', auth, technicianUp, upload.array('images', MAX_WORK_ORDER_IMAGES), async (req, res) => {
   try {
     const year = new Date().getFullYear();
     const count = await WorkOrder.count();
@@ -109,7 +110,7 @@ router.post('/', auth, technicianUp, upload.array('images', 5), async (req, res)
 });
 
 // POST /api/work-orders/:id/images - อัพโหลดรูปเพิ่ม
-router.post('/:id/images', auth, upload.array('images', 5), async (req, res) => {
+router.post('/:id/images', auth, upload.array('images', MAX_WORK_ORDER_IMAGES), async (req, res) => {
   try {
     const wo = await WorkOrder.findByPk(req.params.id);
     if (!wo) return res.status(404).json({ message: 'ไม่พบใบสั่งงาน' });

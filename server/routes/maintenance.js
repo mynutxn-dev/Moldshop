@@ -7,6 +7,8 @@ const { Op } = require('sequelize');
 const { uploadImage, deleteImage } = require('../config/supabaseStorage');
 const router = express.Router();
 
+const emptyToNull = (value) => (value === undefined || value === null || value === '' ? null : value);
+
 // Multer config - use memoryStorage for serverless (Vercel)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -44,6 +46,7 @@ router.get('/', auth, async (req, res) => {
       where[Op.or] = [
         { requestCode: { [Op.iLike]: `%${search}%` } },
         { description: { [Op.iLike]: `%${search}%` } },
+        { notes: { [Op.iLike]: `%${search}%` } },
       ];
     }
     if (status) {
@@ -105,11 +108,29 @@ router.post('/', auth, upload.array('images', 5), async (req, res) => {
 
     // Upload to Supabase Storage
     const imageUrls = await uploadFilesToSupabase(req.files);
+    const payload = {
+      ...req.body,
+      moldId: emptyToNull(req.body.moldId),
+      description: req.body.description?.trim(),
+      notes: req.body.notes?.trim() || null,
+    };
+
+    if (!payload.description) {
+      return res.status(400).json({ message: 'กรุณากรอกรายละเอียด' });
+    }
+
+    if (payload.type !== 'other' && !payload.moldId) {
+      return res.status(400).json({ message: 'กรุณาเลือกแม่พิมพ์' });
+    }
+
+    if (payload.type === 'other' && !payload.notes) {
+      return res.status(400).json({ message: 'กรุณากรอกหัวข้ออื่นๆ' });
+    }
 
     const request = await MaintenanceRequest.create({
       requestCode,
       requestedById: req.user.id,
-      ...req.body,
+      ...payload,
       images: imageUrls,
     });
     res.status(201).json(request);
