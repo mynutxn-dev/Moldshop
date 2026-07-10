@@ -23,6 +23,18 @@ async function migrate() {
       $$;
     `);
 
+    await sequelize.query(`
+      ALTER TABLE "work_orders"
+      ADD COLUMN IF NOT EXISTS "current_stage_date" DATE,
+      ADD COLUMN IF NOT EXISTS "work_location" VARCHAR(200);
+    `);
+
+    await sequelize.query(`
+      UPDATE "work_orders"
+      SET "current_stage_date" = COALESCE("completed_date", "updated_at"::date, "created_at"::date)
+      WHERE "current_stage_date" IS NULL;
+    `);
+
     console.log('Migration completed');
   } catch (error) {
     console.error('Migration failed:', error);

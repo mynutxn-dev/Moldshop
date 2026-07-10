@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiClipboard, FiCalendar, FiTool, FiCheck, FiX, FiEdit2, FiCamera } from 'react-icons/fi';
+import { FiPlus, FiClipboard, FiCalendar, FiTool, FiCheck, FiX, FiEdit2, FiCamera, FiMapPin, FiUser, FiList } from 'react-icons/fi';
 import { workOrdersAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -10,6 +10,11 @@ import imageCompression from 'browser-image-compression';
 const API_BASE = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
 const getImageUrl = (img) => img?.startsWith('http') ? img : `${API_BASE}${img}`;
 const MAX_WORK_ORDER_IMAGES = 10;
+const getToday = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+};
+const formatThaiDate = (date) => date ? new Date(`${date}T00:00:00`).toLocaleDateString('th-TH') : '-';
 
 // Helper: Compress image before upload
 const compressImage = async (file) => {
@@ -30,6 +35,15 @@ const STAGES = [
 ];
 
 const stageMap = Object.fromEntries(STAGES.map(s => [s.key, s]));
+const productionStages = STAGES.filter(s => s.step > 0 && !['completed', 'cancelled'].includes(s.key));
+
+const getRemainingStages = (status) => {
+  if (status === 'completed') return ['เสร็จสิ้นแล้ว'];
+  if (status === 'cancelled') return ['ยกเลิกงาน'];
+  const currentStep = stageMap[status]?.step || 0;
+  const remaining = productionStages.filter(s => s.step > currentStep).map(s => s.label_th);
+  return remaining.length ? remaining : ['รอตรวจรับและปิดงาน'];
+};
 
 const priorityMap = {
   urgent: { label: 'เร่งด่วน', color: '#ffffff', bg: '#dc2626' },
@@ -159,14 +173,26 @@ const WorkOrders = () => {
 
   // ===== Create Modal =====
   const [showModal, setShowModal] = useState(false);
-  const emptyForm = { title: '', type: 'new_mold', description: '', dueDate: '', status: 'mold_design', customer: '' };
+  const emptyForm = {
+    title: '',
+    type: 'new_mold',
+    description: '',
+    dueDate: '',
+    status: 'mold_design',
+    customer: '',
+    currentStageDate: getToday(),
+    workLocation: '',
+    notes: '',
+    assignedToId: '',
+  };
   const [form, setForm] = useState(emptyForm);
   const [formImages, setFormImages] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const openModal = () => {
+  const openModal = async () => {
     setForm(emptyForm);
     setFormImages([]);
+    try { const { data } = await usersAPI.getAll(); setUserOptions(data); } catch (e) { }
     setShowModal(true);
   };
   const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -212,7 +238,14 @@ const WorkOrders = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updatingWO, setUpdatingWO] = useState(null);
   const [userOptions, setUserOptions] = useState([]);
-  const [updateForm, setUpdateForm] = useState({ status: 'mold_design', progress: 0, assignedToId: '' });
+  const [updateForm, setUpdateForm] = useState({
+    status: 'mold_design',
+    progress: 0,
+    assignedToId: '',
+    currentStageDate: getToday(),
+    workLocation: '',
+    notes: '',
+  });
   const [updating, setUpdating] = useState(false);
 
   const openUpdateModal = async (wo) => {
@@ -221,6 +254,9 @@ const WorkOrders = () => {
       status: wo.status || 'mold_design',
       progress: wo.progress || 0,
       assignedToId: wo.assignedToId || '',
+      currentStageDate: wo.currentStageDate || wo.current_stage_date || getToday(),
+      workLocation: wo.workLocation || wo.work_location || '',
+      notes: wo.notes || '',
     });
     try { const { data } = await usersAPI.getAll(); setUserOptions(data); } catch (e) { }
     setShowUpdateModal(true);
@@ -231,7 +267,13 @@ const WorkOrders = () => {
     setUpdating(true);
     try {
       const stageObj = stageMap[updateForm.status];
-      const payload = { status: updateForm.status };
+      const payload = {
+        status: updateForm.status,
+        assignedToId: updateForm.assignedToId || '',
+        currentStageDate: updateForm.currentStageDate || null,
+        workLocation: updateForm.workLocation,
+        notes: updateForm.notes,
+      };
       if (updateForm.status === 'completed') {
         payload.progress = 100;
         payload.completedDate = new Date().toISOString();
@@ -239,13 +281,20 @@ const WorkOrders = () => {
         // Auto-calculate progress from stage step
         payload.progress = Math.round(((stageObj.step - 1) / 6) * 100);
       }
-      if (updateForm.assignedToId) payload.assignedToId = updateForm.assignedToId;
       await workOrdersAPI.update(updatingWO.id, payload);
       toast.success('อัปเดตสถานะงานสำเร็จ');
       setShowUpdateModal(false);
       fetchData(); fetchSummary();
     } catch (err) { toast.error(err.response?.data?.message || 'อัปเดตไม่สำเร็จ'); }
     finally { setUpdating(false); }
+  };
+
+  const selectStage = (status) => {
+    setUpdateForm(prev => ({
+      ...prev,
+      status,
+      currentStageDate: status !== prev.status ? getToday() : prev.currentStageDate,
+    }));
   };
 
   // ===== Edit Info Modal =====
@@ -456,6 +505,14 @@ const WorkOrders = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                   {groups[customer].map((wo) => {
                     const pri = priorityMap[wo.priority] || priorityMap.normal;
+                    const currentStage = stageMap[wo.status];
+                    const remainingStages = getRemainingStages(wo.status);
+                    const currentStageDate = wo.currentStageDate || wo.current_stage_date;
+                    const workLocation = wo.workLocation || wo.work_location;
+                    const dueDate = wo.dueDate || wo.due_date;
+                    const assignee = wo.assignedTo
+                      ? `${wo.assignedTo.firstName || ''} ${wo.assignedTo.lastName || ''}`.trim()
+                      : 'ยังไม่มอบหมาย';
                     return (
                       <div
                         key={wo.id}
@@ -514,13 +571,45 @@ const WorkOrders = () => {
 
                         <StagePipeline currentStatus={wo.status} />
 
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <FiCalendar className="h-4 w-4" /> วันที่เริ่มขั้นตอน
+                            </span>
+                            <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)' }}>{formatThaiDate(currentStageDate)}</p>
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <FiMapPin className="h-4 w-4" /> สถานที่
+                            </span>
+                            <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)', overflowWrap: 'anywhere' }}>{workLocation || '-'}</p>
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <FiUser className="h-4 w-4" /> ผู้รับผิดชอบ
+                            </span>
+                            <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)', overflowWrap: 'anywhere' }}>{assignee}</p>
+                          </div>
+                        </div>
+
+                        {wo.notes && (
+                          <p style={{ margin: '0.9rem 0 0', fontSize: '0.82rem', lineHeight: 1.55, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                            {wo.notes}
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', marginTop: '0.9rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          <FiList className="h-4 w-4" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                          <span><strong style={{ color: 'var(--text-color)' }}>ขั้นตอนปัจจุบัน:</strong> {currentStage?.label_th || '-'} · <strong style={{ color: 'var(--text-color)' }}>เหลือ:</strong> {remainingStages.join(' → ')}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem', paddingTop: '0.9rem', borderTop: '1px solid var(--border-color)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <FiCalendar className="h-4 w-4" />
-                            Due {wo.due_date ? new Date(wo.due_date).toLocaleDateString('th-TH') : '-'}
+                            กำหนดเสร็จ {formatThaiDate(dueDate)}
                           </span>
                           <span>
-                            Updated: {new Date(wo.updated_at || wo.updatedAt).toLocaleDateString('th-TH')}
+                            อัปเดตล่าสุด: {new Date(wo.updated_at || wo.updatedAt).toLocaleDateString('th-TH')}
                           </span>
                         </div>
                       </div>
@@ -563,15 +652,38 @@ const WorkOrders = () => {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">วันที่เริ่มขั้นตอน</label>
+              <input type="date" name="currentStageDate" value={form.currentStageDate} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">กำหนดเสร็จ</label>
               <input type="date" name="dueDate" value={form.dueDate} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">สถานที่ทำงาน</label>
+              <input type="text" name="workLocation" value={form.workLocation} onChange={handleFormChange} placeholder="เช่น Moldshop, CNC 2, Supplier" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ผู้รับผิดชอบ</label>
+            <select name="assignedToId" value={form.assignedToId} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+              <option value="">ยังไม่มอบหมาย</option>
+              {userOptions.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
             <textarea
               name="description" value={form.description} onChange={handleFormChange} rows="3"
               placeholder="อธิบายรายละเอียดงาน..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ความคืบหน้า / งานที่ต้องติดตาม</label>
+            <textarea
+              name="notes" value={form.notes} onChange={handleFormChange} rows="2"
+              placeholder="เช่น กำลังขึ้นรูป Core, รอวัสดุ หรือรอตรวจขนาด"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
@@ -644,7 +756,7 @@ const WorkOrders = () => {
                   return (
                     <button
                       key={s.key} type="button"
-                      onClick={() => setUpdateForm({ ...updateForm, status: s.key })}
+                      onClick={() => selectStage(s.key)}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all"
                       style={{
                         borderColor: isSelected ? s.color : '#e5e7eb',
@@ -668,7 +780,7 @@ const WorkOrders = () => {
                 {/* Cancelled */}
                 <button
                   type="button"
-                  onClick={() => setUpdateForm({ ...updateForm, status: 'cancelled' })}
+                  onClick={() => selectStage('cancelled')}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all"
                   style={{
                     borderColor: updateForm.status === 'cancelled' ? '#ef4444' : '#e5e7eb',
@@ -701,6 +813,39 @@ const WorkOrders = () => {
                 <option value="">ยังไม่มอบหมาย</option>
                 {userOptions.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.role})</option>)}
               </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">วันที่เริ่มขั้นตอนนี้</label>
+                <input
+                  type="date"
+                  value={updateForm.currentStageDate}
+                  onChange={(e) => setUpdateForm({ ...updateForm, currentStageDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">สถานที่ทำงาน</label>
+                <input
+                  type="text"
+                  value={updateForm.workLocation}
+                  onChange={(e) => setUpdateForm({ ...updateForm, workLocation: e.target.value })}
+                  placeholder="เช่น Moldshop, CNC 2, Supplier"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ความคืบหน้า / งานที่ต้องติดตาม</label>
+              <textarea
+                value={updateForm.notes}
+                onChange={(e) => setUpdateForm({ ...updateForm, notes: e.target.value })}
+                rows="3"
+                placeholder="ระบุว่ากำลังทำอะไร ติดปัญหาอะไร หรือรออะไรอยู่"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
             </div>
 
             <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">

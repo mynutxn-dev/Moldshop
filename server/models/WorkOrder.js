@@ -70,6 +70,16 @@ const WorkOrder = sequelize.define('WorkOrder', {
     allowNull: true,
     field: 'start_date',
   },
+  currentStageDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'current_stage_date',
+  },
+  workLocation: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    field: 'work_location',
+  },
   dueDate: {
     type: DataTypes.DATEONLY,
     allowNull: true,

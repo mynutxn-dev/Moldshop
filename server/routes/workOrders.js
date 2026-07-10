@@ -7,6 +7,7 @@ const { Op } = require('sequelize');
 const { uploadImage, deleteImage } = require('../config/supabaseStorage');
 const router = express.Router();
 const MAX_WORK_ORDER_IMAGES = 10;
+const getBangkokDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 
 // Multer config
 const upload = multer({
@@ -37,6 +38,8 @@ router.get('/', auth, async (req, res) => {
       where[Op.or] = [
         { orderCode: { [Op.iLike]: `%${search}%` } },
         { title: { [Op.iLike]: `%${search}%` } },
+        { workLocation: { [Op.iLike]: `%${search}%` } },
+        { notes: { [Op.iLike]: `%${search}%` } },
       ];
     }
     if (status) where.status = status;
@@ -101,6 +104,9 @@ router.post('/', auth, technicianUp, upload.array('images', MAX_WORK_ORDER_IMAGE
       createdById: req.user.id,
       images,
       ...req.body,
+      currentStageDate: req.body.currentStageDate || getBangkokDate(),
+      workLocation: req.body.workLocation?.trim() || null,
+      notes: req.body.notes?.trim() || null,
     });
     res.status(201).json(wo);
   } catch (error) {
@@ -154,14 +160,29 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
     const wo = await WorkOrder.findByPk(req.params.id);
     if (!wo) return res.status(404).json({ message: 'ไม่พบใบสั่งงาน' });
 
-    if (req.body.status === 'completed' && !wo.completedDate) {
-      req.body.completedDate = new Date();
-      req.body.progress = 100;
-    } else if (req.body.status === 'trial_mold' && !wo.progress) {
-      req.body.progress = 83;
+    const payload = { ...req.body };
+    if (Object.prototype.hasOwnProperty.call(req.body, 'assignedToId')) {
+      payload.assignedToId = req.body.assignedToId === '' ? null : req.body.assignedToId;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'workLocation')) {
+      payload.workLocation = req.body.workLocation?.trim() || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'notes')) {
+      payload.notes = req.body.notes?.trim() || null;
     }
 
-    await wo.update(req.body);
+    if (req.body.status && req.body.status !== wo.status && !req.body.currentStageDate) {
+      payload.currentStageDate = getBangkokDate();
+    }
+
+    if (payload.status === 'completed' && !wo.completedDate) {
+      payload.completedDate = new Date();
+      payload.progress = 100;
+    } else if (payload.status === 'trial_mold' && !wo.progress) {
+      payload.progress = 83;
+    }
+
+    await wo.update(payload);
     res.json(wo);
   } catch (error) {
     res.status(500).json({ message: 'เกิดข้อผิดพลาด' });
