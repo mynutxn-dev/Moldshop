@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiClipboard, FiCalendar, FiTool, FiCheck, FiX, FiEdit2, FiCamera, FiMapPin, FiUser, FiList } from 'react-icons/fi';
+import { FiPlus, FiClipboard, FiCalendar, FiTool, FiCheck, FiX, FiEdit2, FiCamera, FiMapPin, FiUser, FiList, FiMessageSquare } from 'react-icons/fi';
 import { workOrdersAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -15,6 +15,9 @@ const getToday = () => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 };
 const formatThaiDate = (date) => date ? new Date(`${date}T00:00:00`).toLocaleDateString('th-TH') : '-';
+const formatStageDate = (date) => date
+  ? new Date(`${date}T00:00:00`).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  : '-';
 
 // Helper: Compress image before upload
 const compressImage = async (file) => {
@@ -45,6 +48,33 @@ const getRemainingStages = (status) => {
   return remaining.length ? remaining : ['รอตรวจรับและปิดงาน'];
 };
 
+const ProgressHistory = ({ logs = [] }) => {
+  if (!logs.length) return null;
+
+  return (
+    <details className="border-t border-gray-200 pt-3">
+      <summary className="cursor-pointer text-sm font-semibold text-gray-700">
+        ประวัติการดำเนินงาน ({logs.length})
+      </summary>
+      <div className="mt-3 max-h-64 space-y-3 overflow-y-auto pr-1">
+        {[...logs].reverse().map((log, index) => {
+          const stage = stageMap[log.status];
+          return (
+            <div key={`${log.createdAt || log.date}-${index}`} className="border-l-2 border-indigo-200 pl-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-gray-800">{formatThaiDate(log.date)}</span>
+                <span className="text-xs font-medium text-indigo-600">{stage?.label_th || log.status || '-'}</span>
+              </div>
+              {log.comment && <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-gray-600">{log.comment}</p>}
+              {log.workLocation && <p className="mt-1 text-xs text-gray-400">สถานที่: {log.workLocation}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
+};
+
 const priorityMap = {
   urgent: { label: 'เร่งด่วน', color: '#ffffff', bg: '#dc2626' },
   high: { label: 'สูง', color: '#ffffff', bg: '#ea580c' },
@@ -61,11 +91,16 @@ const typeMap = {
 };
 
 // ====== Stage Progress Bar ======
-const StagePipeline = ({ currentStatus, compact = false }) => {
+const StagePipeline = ({ currentStatus, progressLogs = [], compact = false }) => {
   const pipeline = STAGES.filter(s => s.step > 0 && s.key !== 'completed');
   const currentStep = stageMap[currentStatus]?.step ?? 0;
   const isDone = currentStatus === 'completed';
   const isCancelled = currentStatus === 'cancelled';
+  const logs = Array.isArray(progressLogs) ? progressLogs : [];
+  const getStageDate = (status) => {
+    const log = [...logs].reverse().find(item => item.status === status);
+    return formatStageDate(log?.date);
+  };
 
   if (compact) {
     const stage = stageMap[currentStatus];
@@ -101,14 +136,17 @@ const StagePipeline = ({ currentStatus, compact = false }) => {
               </div>
               <span
                 className="text-[9px] font-medium text-center mt-1 leading-tight"
-                style={{ color: isActive ? s.color : isPast ? '#6b7280' : '#9ca3af', maxWidth: 52 }}
+                style={{ color: isActive ? s.color : isPast ? '#6b7280' : '#9ca3af', maxWidth: 52, minHeight: 20, display: 'flex', alignItems: 'center' }}
               >
                 {s.label}
+              </span>
+              <span className="mt-0.5 text-[9px] font-semibold text-gray-400">
+                {getStageDate(s.key)}
               </span>
             </div>
             {idx < pipeline.length - 1 && (
               <div
-                className="flex-1 h-0.5 mb-4 mx-0.5 min-w-[8px]"
+                className="mb-9 mx-0.5 h-0.5 min-w-[8px] flex-1"
                 style={{ background: isPast && pipeline[idx + 1] && (isDone || pipeline[idx + 1].step <= currentStep) ? s.color : '#e5e7eb' }}
               />
             )}
@@ -127,8 +165,11 @@ const StagePipeline = ({ currentStatus, compact = false }) => {
         >
           <FiCheck size={12} />
         </div>
-        <span className="text-[9px] font-medium text-center mt-1 leading-tight" style={{ color: isDone ? '#22c55e' : '#9ca3af' }}>
+        <span className="text-[9px] font-medium text-center mt-1 leading-tight" style={{ color: isDone ? '#22c55e' : '#9ca3af', minHeight: 20, display: 'flex', alignItems: 'center' }}>
           เสร็จ
+        </span>
+        <span className="mt-0.5 text-[9px] font-semibold text-gray-400">
+          {getStageDate('completed')}
         </span>
       </div>
     </div>
@@ -244,7 +285,7 @@ const WorkOrders = () => {
     assignedToId: '',
     currentStageDate: getToday(),
     workLocation: '',
-    notes: '',
+    progressComment: '',
   });
   const [updating, setUpdating] = useState(false);
 
@@ -256,7 +297,7 @@ const WorkOrders = () => {
       assignedToId: wo.assignedToId || '',
       currentStageDate: wo.currentStageDate || wo.current_stage_date || getToday(),
       workLocation: wo.workLocation || wo.work_location || '',
-      notes: wo.notes || '',
+      progressComment: '',
     });
     try { const { data } = await usersAPI.getAll(); setUserOptions(data); } catch (e) { }
     setShowUpdateModal(true);
@@ -272,7 +313,8 @@ const WorkOrders = () => {
         assignedToId: updateForm.assignedToId || '',
         currentStageDate: updateForm.currentStageDate || null,
         workLocation: updateForm.workLocation,
-        notes: updateForm.notes,
+        progressComment: updateForm.progressComment,
+        recordProgress: true,
       };
       if (updateForm.status === 'completed') {
         payload.progress = 100;
@@ -282,7 +324,7 @@ const WorkOrders = () => {
         payload.progress = Math.round(((stageObj.step - 1) / 6) * 100);
       }
       await workOrdersAPI.update(updatingWO.id, payload);
-      toast.success('อัปเดตสถานะงานสำเร็จ');
+      toast.success('บันทึกความคืบหน้าสำเร็จ');
       setShowUpdateModal(false);
       fetchData(); fetchSummary();
     } catch (err) { toast.error(err.response?.data?.message || 'อัปเดตไม่สำเร็จ'); }
@@ -569,7 +611,7 @@ const WorkOrders = () => {
                           </button>
                         </div>
 
-                        <StagePipeline currentStatus={wo.status} />
+                        <StagePipeline currentStatus={wo.status} progressLogs={wo.progressLogs || wo.progress_logs || []} />
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                           <div style={{ minWidth: 0 }}>
@@ -593,9 +635,12 @@ const WorkOrders = () => {
                         </div>
 
                         {wo.notes && (
-                          <p style={{ margin: '0.9rem 0 0', fontSize: '0.82rem', lineHeight: 1.55, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                            {wo.notes}
-                          </p>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', marginTop: '0.9rem' }}>
+                            <FiMessageSquare className="h-4 w-4" style={{ flexShrink: 0, marginTop: '0.15rem', color: 'var(--text-muted)' }} />
+                            <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.55, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                              <strong style={{ color: 'var(--text-color)' }}>คอมเมนต์ล่าสุด:</strong> {wo.notes}
+                            </p>
+                          </div>
                         )}
 
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', marginTop: '0.9rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -680,7 +725,7 @@ const WorkOrders = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ความคืบหน้า / งานที่ต้องติดตาม</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">คอมเมนต์เริ่มต้น</label>
             <textarea
               name="notes" value={form.notes} onChange={handleFormChange} rows="2"
               placeholder="เช่น กำลังขึ้นรูป Core, รอวัสดุ หรือรอตรวจขนาด"
@@ -744,6 +789,8 @@ const WorkOrders = () => {
               <p className="font-bold text-gray-900">{updatingWO.orderCode} — {updatingWO.title}</p>
               <p className="text-gray-500 text-xs mt-0.5">{updatingWO.mold?.moldCode || '-'} | {typeMap[updatingWO.type] || updatingWO.type}</p>
             </div>
+
+            <ProgressHistory logs={updatingWO.progressLogs || updatingWO.progress_logs || []} />
 
             {/* Stage Selector */}
             <div>
@@ -838,12 +885,12 @@ const WorkOrders = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ความคืบหน้า / งานที่ต้องติดตาม</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">คอมเมนต์เพิ่มเติม</label>
               <textarea
-                value={updateForm.notes}
-                onChange={(e) => setUpdateForm({ ...updateForm, notes: e.target.value })}
+                value={updateForm.progressComment}
+                onChange={(e) => setUpdateForm({ ...updateForm, progressComment: e.target.value })}
                 rows="3"
-                placeholder="ระบุว่ากำลังทำอะไร ติดปัญหาอะไร หรือรออะไรอยู่"
+                placeholder="เพิ่มรายละเอียดว่ากำลังทำอะไร ติดปัญหาอะไร หรือรออะไรอยู่"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
@@ -851,7 +898,7 @@ const WorkOrders = () => {
             <div className="flex justify-end space-x-3 pt-2 border-t border-gray-200">
               <button type="button" onClick={() => setShowUpdateModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
               <button type="submit" disabled={updating} className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-                {updating ? 'กำลังบันทึก...' : 'บันทึกสถานะ'}
+                {updating ? 'กำลังบันทึก...' : 'บันทึกความคืบหน้า'}
               </button>
             </div>
           </form>

@@ -104,6 +104,18 @@ const WorkOrder = sequelize.define('WorkOrder', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  progressLogs: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'progress_logs',
+    get() {
+      const raw = this.getDataValue('progressLogs');
+      return raw ? JSON.parse(raw) : [];
+    },
+    set(val) {
+      this.setDataValue('progressLogs', val ? JSON.stringify(val) : null);
+    },
+  },
   images: {
     type: DataTypes.TEXT,
     allowNull: true,

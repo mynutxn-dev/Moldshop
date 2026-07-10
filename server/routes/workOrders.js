@@ -99,14 +99,29 @@ router.post('/', auth, technicianUp, upload.array('images', MAX_WORK_ORDER_IMAGE
       images = await uploadFilesToSupabase(req.files);
     }
 
+    const currentStageDate = req.body.currentStageDate || getBangkokDate();
+    const workLocation = req.body.workLocation?.trim() || null;
+    const initialComment = req.body.notes?.trim() || '';
+    const assignedToId = req.body.assignedToId || null;
+
     const wo = await WorkOrder.create({
       orderCode,
       createdById: req.user.id,
       images,
       ...req.body,
-      currentStageDate: req.body.currentStageDate || getBangkokDate(),
-      workLocation: req.body.workLocation?.trim() || null,
-      notes: req.body.notes?.trim() || null,
+      currentStageDate,
+      workLocation,
+      notes: initialComment || null,
+      assignedToId,
+      progressLogs: [{
+        date: currentStageDate,
+        status: req.body.status || 'mold_design',
+        comment: initialComment,
+        workLocation: workLocation || '',
+        assignedToId,
+        createdById: req.user.id,
+        createdAt: new Date().toISOString(),
+      }],
     });
     res.status(201).json(wo);
   } catch (error) {
@@ -160,7 +175,8 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
     const wo = await WorkOrder.findByPk(req.params.id);
     if (!wo) return res.status(404).json({ message: 'ไม่พบใบสั่งงาน' });
 
-    const payload = { ...req.body };
+    const { progressComment, recordProgress, ...requestData } = req.body;
+    const payload = { ...requestData };
     if (Object.prototype.hasOwnProperty.call(req.body, 'assignedToId')) {
       payload.assignedToId = req.body.assignedToId === '' ? null : req.body.assignedToId;
     }
@@ -180,6 +196,25 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
       payload.progress = 100;
     } else if (payload.status === 'trial_mold' && !wo.progress) {
       payload.progress = 83;
+    }
+
+    if (recordProgress === true || recordProgress === 'true') {
+      const comment = progressComment?.trim() || '';
+      const assignedToId = payload.assignedToId ?? wo.assignedToId ?? null;
+      const workLocation = payload.workLocation ?? wo.workLocation ?? '';
+      payload.progressLogs = [
+        ...(wo.progressLogs || []),
+        {
+          date: payload.currentStageDate || wo.currentStageDate || getBangkokDate(),
+          status: payload.status || wo.status,
+          comment,
+          workLocation: workLocation || '',
+          assignedToId,
+          createdById: req.user.id,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      if (comment) payload.notes = comment;
     }
 
     await wo.update(payload);

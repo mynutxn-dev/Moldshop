@@ -26,13 +26,29 @@ async function migrate() {
     await sequelize.query(`
       ALTER TABLE "work_orders"
       ADD COLUMN IF NOT EXISTS "current_stage_date" DATE,
-      ADD COLUMN IF NOT EXISTS "work_location" VARCHAR(200);
+      ADD COLUMN IF NOT EXISTS "work_location" VARCHAR(200),
+      ADD COLUMN IF NOT EXISTS "progress_logs" TEXT;
     `);
 
     await sequelize.query(`
       UPDATE "work_orders"
       SET "current_stage_date" = COALESCE("completed_date", "updated_at"::date, "created_at"::date)
       WHERE "current_stage_date" IS NULL;
+    `);
+
+    await sequelize.query(`
+      UPDATE "work_orders"
+      SET "progress_logs" = json_build_array(
+        json_build_object(
+          'date', "current_stage_date",
+          'status', "status",
+          'comment', COALESCE("notes", ''),
+          'workLocation', COALESCE("work_location", ''),
+          'assignedToId', "assigned_to_id",
+          'createdAt', "updated_at"
+        )
+      )::text
+      WHERE "progress_logs" IS NULL;
     `);
 
     console.log('Migration completed');
