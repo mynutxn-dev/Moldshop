@@ -62,7 +62,9 @@ const ProgressHistory = ({ logs = [] }) => {
           return (
             <div key={`${log.createdAt || log.date}-${index}`} className="border-l-2 border-indigo-200 pl-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-gray-800">{formatThaiDate(log.date)}</span>
+                <span className="text-xs font-bold text-gray-800">
+                  {formatThaiDate(log.date)}{log.endDate ? ` - ${formatThaiDate(log.endDate)}` : ''}
+                </span>
                 <span className="text-xs font-medium text-indigo-600">{stage?.label_th || log.status || '-'}</span>
               </div>
               {log.comment && <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-gray-600">{log.comment}</p>}
@@ -97,21 +99,23 @@ const StagePipeline = ({ currentStatus, progressLogs = [], completedDate = null,
   const isDone = currentStatus === 'completed';
   const isCancelled = currentStatus === 'cancelled';
   const logs = Array.isArray(progressLogs) ? progressLogs : [];
-  const completedStageDateValue = [...logs].reverse().find(item => item.status === 'completed')?.date || completedDate;
+  const completedLog = [...logs].reverse().find(item => item.status === 'completed');
+  const completedStageDateValue = completedLog?.endDate || completedLog?.date || completedDate;
   const completedStageDate = formatStageDate(completedStageDateValue);
   const getStageDates = (status) => {
     const startIndex = logs.reduce((latestIndex, item, index) => item.status === status ? index : latestIndex, -1);
     if (startIndex === -1) return { start: '-', end: '-' };
 
-    const startDate = logs[startIndex]?.date;
+    const stageLog = logs[startIndex];
+    const startDate = stageLog?.date;
     const nextStageLog = logs.slice(startIndex + 1).find(item => item.status !== status);
-    const endDate = nextStageLog?.date;
+    const endDate = stageLog?.endDate || nextStageLog?.date;
     const hasValidEndDate = !startDate || !endDate || new Date(endDate) >= new Date(startDate);
     const hasValidCompletedDate = isDone && completedStageDateValue
       && (!startDate || new Date(completedStageDateValue) >= new Date(startDate));
     return {
       start: formatStageDate(startDate),
-      end: nextStageLog && hasValidEndDate
+      end: endDate && hasValidEndDate
         ? formatStageDate(endDate)
         : hasValidCompletedDate ? completedStageDate : '-',
     };
@@ -297,18 +301,24 @@ const WorkOrders = () => {
     progress: 0,
     assignedToId: '',
     currentStageDate: getToday(),
+    currentStageEndDate: '',
     workLocation: '',
     progressComment: '',
   });
   const [updating, setUpdating] = useState(false);
 
   const openUpdateModal = async (wo) => {
+    const logs = wo.progressLogs || wo.progress_logs || [];
+    const currentLog = [...logs].reverse().find(log => log.status === wo.status);
+    const savedCompletedDate = wo.completedDate || wo.completed_date || '';
     setUpdatingWO(wo);
     setUpdateForm({
       status: wo.status || 'mold_design',
       progress: wo.progress || 0,
       assignedToId: wo.assignedToId || '',
-      currentStageDate: wo.currentStageDate || wo.current_stage_date || getToday(),
+      currentStageDate: currentLog?.date || wo.currentStageDate || wo.current_stage_date || getToday(),
+      currentStageEndDate: currentLog?.endDate
+        || (wo.status === 'completed' ? currentLog?.date || savedCompletedDate : ''),
       workLocation: wo.workLocation || wo.work_location || '',
       progressComment: '',
     });
@@ -325,13 +335,14 @@ const WorkOrders = () => {
         status: updateForm.status,
         assignedToId: updateForm.assignedToId || '',
         currentStageDate: updateForm.currentStageDate || null,
+        currentStageEndDate: updateForm.currentStageEndDate || null,
         workLocation: updateForm.workLocation,
         progressComment: updateForm.progressComment,
         recordProgress: true,
       };
       if (updateForm.status === 'completed') {
         payload.progress = 100;
-        payload.completedDate = updateForm.currentStageDate || getToday();
+        payload.completedDate = updateForm.currentStageEndDate || updateForm.currentStageDate || getToday();
       } else if (stageObj && stageObj.step > 0) {
         // Auto-calculate progress from stage step
         payload.progress = Math.round(((stageObj.step - 1) / 6) * 100);
@@ -345,10 +356,16 @@ const WorkOrders = () => {
   };
 
   const selectStage = (status) => {
+    const logs = updatingWO?.progressLogs || updatingWO?.progress_logs || [];
+    const selectedLog = [...logs].reverse().find(log => log.status === status);
+    const savedCompletedDate = updatingWO?.completedDate || updatingWO?.completed_date || '';
     setUpdateForm(prev => ({
       ...prev,
       status,
-      currentStageDate: status !== prev.status ? getToday() : prev.currentStageDate,
+      currentStageDate: status !== prev.status ? selectedLog?.date || getToday() : prev.currentStageDate,
+      currentStageEndDate: status !== prev.status
+        ? selectedLog?.endDate || (status === 'completed' ? selectedLog?.date || savedCompletedDate : '')
+        : prev.currentStageEndDate,
     }));
   };
 
@@ -564,7 +581,9 @@ const WorkOrders = () => {
                     const remainingStages = getRemainingStages(wo.status);
                     const currentStageDate = wo.currentStageDate || wo.current_stage_date;
                     const progressLogs = wo.progressLogs || wo.progress_logs || [];
-                    const completedDate = [...progressLogs].reverse().find(log => log.status === 'completed')?.date
+                    const completedLog = [...progressLogs].reverse().find(log => log.status === 'completed');
+                    const completedDate = completedLog?.endDate
+                      || completedLog?.date
                       || wo.completedDate
                       || wo.completed_date;
                     const workLocation = wo.workLocation || wo.work_location;
@@ -900,6 +919,16 @@ const WorkOrders = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">วันที่จบขั้นตอนนี้</label>
+                <input
+                  type="date"
+                  value={updateForm.currentStageEndDate}
+                  min={updateForm.currentStageDate || undefined}
+                  onChange={(e) => setUpdateForm({ ...updateForm, currentStageEndDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">สถานที่ทำงาน</label>
                 <input
                   type="text"

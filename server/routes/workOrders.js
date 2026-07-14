@@ -175,7 +175,7 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
     const wo = await WorkOrder.findByPk(req.params.id);
     if (!wo) return res.status(404).json({ message: 'ไม่พบใบสั่งงาน' });
 
-    const { progressComment, recordProgress, ...requestData } = req.body;
+    const { progressComment, recordProgress, currentStageEndDate, ...requestData } = req.body;
     const payload = { ...requestData };
     if (Object.prototype.hasOwnProperty.call(req.body, 'assignedToId')) {
       payload.assignedToId = req.body.assignedToId === '' ? null : req.body.assignedToId;
@@ -191,8 +191,14 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
       payload.currentStageDate = getBangkokDate();
     }
 
+    const stageStartDate = payload.currentStageDate || wo.currentStageDate;
+    if (currentStageEndDate && stageStartDate && new Date(currentStageEndDate) < new Date(stageStartDate)) {
+      return res.status(400).json({ message: 'วันที่จบขั้นตอนต้องไม่ก่อนวันที่เริ่มขั้นตอน' });
+    }
+
     if (payload.status === 'completed') {
-      payload.completedDate = payload.completedDate
+      payload.completedDate = currentStageEndDate
+        || payload.completedDate
         || (req.body.status !== wo.status ? payload.currentStageDate : wo.completedDate)
         || wo.currentStageDate
         || getBangkokDate();
@@ -209,6 +215,7 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
         ...(wo.progressLogs || []),
         {
           date: payload.currentStageDate || wo.currentStageDate || getBangkokDate(),
+          endDate: currentStageEndDate || '',
           status: payload.status || wo.status,
           comment,
           workLocation: workLocation || '',
