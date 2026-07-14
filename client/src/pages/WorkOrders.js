@@ -8,7 +8,13 @@ import { SkeletonList } from '../components/Skeleton';
 import imageCompression from 'browser-image-compression';
 
 const API_BASE = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5001';
-const getImageUrl = (img) => img?.startsWith('http') ? img : `${API_BASE}${img}`;
+const getImageUrl = (img) => {
+  const value = typeof img === 'string'
+    ? img
+    : img?.url || img?.publicUrl || img?.imageUrl || img?.path || '';
+  if (!value || typeof value !== 'string') return '';
+  return value.startsWith('http') ? value : `${API_BASE}${value}`;
+};
 const MAX_WORK_ORDER_IMAGES = 10;
 const getToday = () => {
   const now = new Date();
@@ -447,6 +453,9 @@ const WorkOrders = () => {
     { value: completedProjects, label: 'เสร็จสิ้น', color: '#10b981', sparkPoints: '0,10 10,15 20,8 30,12 40,6 50,14 60,8' },
     { value: lateProjects, label: 'เกินกำหนด', color: '#ef4444', sparkPoints: '0,15 10,12 20,18 30,22 40,15 50,10 60,14' },
   ];
+  const editingImages = (Array.isArray(editingWO?.images) ? editingWO.images : [])
+    .map(image => ({ image, url: getImageUrl(image) }))
+    .filter(({ url }) => Boolean(url));
 
   return (
     <div>
@@ -996,21 +1005,21 @@ const WorkOrders = () => {
             </div>
 
             {/* Image Gallery */}
-            {editingWO.images && editingWO.images.length > 0 && (
+            {editingImages.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพแนบ ({editingWO.images.length} รูป)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">รูปภาพแนบ ({editingImages.length} รูป)</label>
                 <div className="flex flex-wrap gap-2">
-                  {editingWO.images.map((img, i) => (
-                    <div key={i} className="relative group">
+                  {editingImages.map(({ image, url }, i) => (
+                    <div key={`${url}-${i}`} className="relative group">
                       <img
-                        src={getImageUrl(img)}
+                        src={url}
                         alt=""
                         className="w-20 h-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
-                        onClick={() => setLightboxImg(getImageUrl(img))}
+                        onClick={() => setLightboxImg(url)}
                       />
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteWOImage(img); }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteWOImage(typeof image === 'string' ? image : url); }}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600"
                         title="ลบรูปนี้"
                       >
