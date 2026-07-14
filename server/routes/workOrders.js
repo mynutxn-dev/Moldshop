@@ -191,8 +191,11 @@ router.put('/:id', auth, technicianUp, async (req, res) => {
       payload.currentStageDate = getBangkokDate();
     }
 
-    if (payload.status === 'completed' && !wo.completedDate) {
-      payload.completedDate = new Date();
+    if (payload.status === 'completed') {
+      payload.completedDate = payload.completedDate
+        || (req.body.status !== wo.status ? payload.currentStageDate : wo.completedDate)
+        || wo.currentStageDate
+        || getBangkokDate();
       payload.progress = 100;
     } else if (payload.status === 'trial_mold' && !wo.progress) {
       payload.progress = 83;

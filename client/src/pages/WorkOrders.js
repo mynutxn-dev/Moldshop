@@ -91,15 +91,30 @@ const typeMap = {
 };
 
 // ====== Stage Progress Bar ======
-const StagePipeline = ({ currentStatus, progressLogs = [], compact = false }) => {
+const StagePipeline = ({ currentStatus, progressLogs = [], completedDate = null, compact = false }) => {
   const pipeline = STAGES.filter(s => s.step > 0 && s.key !== 'completed');
   const currentStep = stageMap[currentStatus]?.step ?? 0;
   const isDone = currentStatus === 'completed';
   const isCancelled = currentStatus === 'cancelled';
   const logs = Array.isArray(progressLogs) ? progressLogs : [];
-  const getStageDate = (status) => {
-    const log = [...logs].reverse().find(item => item.status === status);
-    return formatStageDate(log?.date);
+  const completedStageDateValue = [...logs].reverse().find(item => item.status === 'completed')?.date || completedDate;
+  const completedStageDate = formatStageDate(completedStageDateValue);
+  const getStageDates = (status) => {
+    const startIndex = logs.reduce((latestIndex, item, index) => item.status === status ? index : latestIndex, -1);
+    if (startIndex === -1) return { start: '-', end: '-' };
+
+    const startDate = logs[startIndex]?.date;
+    const nextStageLog = logs.slice(startIndex + 1).find(item => item.status !== status);
+    const endDate = nextStageLog?.date;
+    const hasValidEndDate = !startDate || !endDate || new Date(endDate) >= new Date(startDate);
+    const hasValidCompletedDate = isDone && completedStageDateValue
+      && (!startDate || new Date(completedStageDateValue) >= new Date(startDate));
+    return {
+      start: formatStageDate(startDate),
+      end: nextStageLog && hasValidEndDate
+        ? formatStageDate(endDate)
+        : hasValidCompletedDate ? completedStageDate : '-',
+    };
   };
 
   if (compact) {
@@ -121,9 +136,10 @@ const StagePipeline = ({ currentStatus, progressLogs = [], compact = false }) =>
       {pipeline.map((s, idx) => {
         const isActive = s.step === currentStep && !isDone && !isCancelled;
         const isPast = (isDone || s.step < currentStep) && !isCancelled;
+        const stageDates = getStageDates(s.key);
         return (
           <React.Fragment key={s.key}>
-            <div className="flex flex-col items-center min-w-[52px]">
+            <div className="flex min-w-[72px] flex-col items-center">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all"
                 style={{
@@ -136,17 +152,16 @@ const StagePipeline = ({ currentStatus, progressLogs = [], compact = false }) =>
               </div>
               <span
                 className="text-[9px] font-medium text-center mt-1 leading-tight"
-                style={{ color: isActive ? s.color : isPast ? '#6b7280' : '#9ca3af', maxWidth: 52, minHeight: 20, display: 'flex', alignItems: 'center' }}
+                style={{ color: isActive ? s.color : isPast ? '#6b7280' : '#9ca3af', maxWidth: 72, minHeight: 20, display: 'flex', alignItems: 'center' }}
               >
                 {s.label}
               </span>
-              <span className="mt-0.5 text-[9px] font-semibold text-gray-400">
-                {getStageDate(s.key)}
-              </span>
+              <span className="mt-0.5 whitespace-nowrap text-[9px] font-semibold text-gray-400">เริ่ม {stageDates.start}</span>
+              <span className="whitespace-nowrap text-[9px] font-semibold text-gray-400">จบ {stageDates.end}</span>
             </div>
             {idx < pipeline.length - 1 && (
               <div
-                className="mb-9 mx-0.5 h-0.5 min-w-[8px] flex-1"
+                className="mb-12 mx-0.5 h-0.5 min-w-[8px] flex-1"
                 style={{ background: isPast && pipeline[idx + 1] && (isDone || pipeline[idx + 1].step <= currentStep) ? s.color : '#e5e7eb' }}
               />
             )}
@@ -154,7 +169,7 @@ const StagePipeline = ({ currentStatus, progressLogs = [], compact = false }) =>
         );
       })}
       {/* Completed badge */}
-      <div className="flex flex-col items-center min-w-[44px]">
+      <div className="flex min-w-[68px] flex-col items-center">
         <div
           className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all"
           style={{
@@ -168,9 +183,7 @@ const StagePipeline = ({ currentStatus, progressLogs = [], compact = false }) =>
         <span className="text-[9px] font-medium text-center mt-1 leading-tight" style={{ color: isDone ? '#22c55e' : '#9ca3af', minHeight: 20, display: 'flex', alignItems: 'center' }}>
           เสร็จ
         </span>
-        <span className="mt-0.5 text-[9px] font-semibold text-gray-400">
-          {getStageDate('completed')}
-        </span>
+        <span className="mt-0.5 whitespace-nowrap text-[9px] font-semibold text-gray-400">จบ {completedStageDate}</span>
       </div>
     </div>
   );
@@ -318,7 +331,7 @@ const WorkOrders = () => {
       };
       if (updateForm.status === 'completed') {
         payload.progress = 100;
-        payload.completedDate = new Date().toISOString();
+        payload.completedDate = updateForm.currentStageDate || getToday();
       } else if (stageObj && stageObj.step > 0) {
         // Auto-calculate progress from stage step
         payload.progress = Math.round(((stageObj.step - 1) / 6) * 100);
@@ -550,6 +563,10 @@ const WorkOrders = () => {
                     const currentStage = stageMap[wo.status];
                     const remainingStages = getRemainingStages(wo.status);
                     const currentStageDate = wo.currentStageDate || wo.current_stage_date;
+                    const progressLogs = wo.progressLogs || wo.progress_logs || [];
+                    const completedDate = [...progressLogs].reverse().find(log => log.status === 'completed')?.date
+                      || wo.completedDate
+                      || wo.completed_date;
                     const workLocation = wo.workLocation || wo.work_location;
                     const dueDate = wo.dueDate || wo.due_date;
                     const assignee = wo.assignedTo
@@ -611,14 +628,24 @@ const WorkOrders = () => {
                           </button>
                         </div>
 
-                        <StagePipeline currentStatus={wo.status} progressLogs={wo.progressLogs || wo.progress_logs || []} />
+                        <StagePipeline
+                          currentStatus={wo.status}
+                          progressLogs={progressLogs}
+                          completedDate={completedDate}
+                        />
 
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                           <div style={{ minWidth: 0 }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               <FiCalendar className="h-4 w-4" /> วันที่เริ่มขั้นตอน
                             </span>
                             <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)' }}>{formatThaiDate(currentStageDate)}</p>
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <FiCheck className="h-4 w-4" /> วันจบงาน
+                            </span>
+                            <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)' }}>{formatThaiDate(completedDate)}</p>
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
